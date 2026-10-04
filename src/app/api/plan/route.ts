@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete, KNOWN_MODELS } from "@/lib/cirrascale";
-import { buildPlannerPrompt } from "@/lib/planner";
+import { buildPlannerPrompt, extractPlan } from "@/lib/planner";
 
 export const runtime = "nodejs";
 
@@ -26,11 +26,11 @@ export async function POST(req: Request) {
   const prompt = buildPlannerPrompt(goal, body.context);
 
   try {
-    const plan = await complete(prompt, {
+    const raw = await complete(prompt, {
       model: body.model,
       maxTokens: 1024,
     });
-    return NextResponse.json({ plan });
+    return NextResponse.json({ plan: extractPlan(raw) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 502 });

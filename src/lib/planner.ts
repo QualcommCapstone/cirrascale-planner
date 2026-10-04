@@ -25,3 +25,26 @@ export function buildPlannerPrompt(goal: string, context?: string): string {
 
   return `${SYSTEM_ROLE}${grounding}\n\n## User goal\n${goal.trim()}${GUARDRAILS}\n\n`;
 }
+
+/**
+ * Clean up a raw completion into a single plan.
+ *
+ * The completions models (e.g. Llama-3.1-8B) tend to keep generating past one
+ * answer: they repeat the whole plan and echo prompt text. We keep only the
+ * first plan and strip any echoed guardrail line.
+ */
+export function extractPlan(raw: string): string {
+  let out = raw.trim();
+
+  // The model loops by re-emitting a fresh "## Goal". Keep only the first block.
+  const first = out.indexOf("## Goal");
+  if (first !== -1) {
+    const second = out.indexOf("## Goal", first + 1);
+    if (second !== -1) out = out.slice(0, second).trim();
+  }
+
+  // Drop any echoed guardrail / instruction remnant and anything after it.
+  out = out.replace(/Return ONLY the Markdown plan[\s\S]*$/i, "").trim();
+
+  return out;
+}
