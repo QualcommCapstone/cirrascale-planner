@@ -5,7 +5,7 @@ Turn any prompt into a structured, step-by-step **plan** — powered by the
 **Cirrascale**.
 
 This is the **main platform**. For experiments, see the sibling
-[`cirrascale-sandbox`](https://github.com/RishithMody/cirrascale-sandbox).
+[`cirrascale-sandbox`](https://github.com/QualcommCapstone/cirrascale-sandbox).
 
 ## Stack
 
