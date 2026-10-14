@@ -21,6 +21,7 @@ before porting anything here.
 2. `docs/architecture.md` — how the app is wired (request flow, key files).
 3. `docs/conventions.md` — code style, server/client rules, git, local dev.
 4. `.claude/skills/cirrascale-inference/` — the skill for making model calls.
+5. `docs/features.md` — the feature tracker: what we want to build and where it stands.
 
 ## The golden rules
 
