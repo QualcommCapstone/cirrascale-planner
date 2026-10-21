@@ -52,7 +52,7 @@ export default function PlannerPage() {
         ...prev,
         { id: nextId.current++, content, sender: "ai" },
       ]);
-    } catch (err) {
+    } catch  {
       setMessages((prev) => [
         ...prev,
         {
