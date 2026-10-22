@@ -5,9 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Cancel older runs of the same ref when a new one starts.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -37,7 +43,7 @@ jobs:
         run: npm run build
 
   docker:
-    name: Build and Test Docker
+    name: Build, Test & Publish Docker
     needs: validate
     runs-on: ubuntu-latest
 
@@ -49,8 +55,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t cirrascale-planner:ci .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Derive image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+            type=ref,event=pr
+
+      - name: Build image (load locally for testing)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: cirrascale-planner:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Start container
         run: |
@@ -63,11 +88,13 @@ jobs:
         run: |
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:3000/api/health; then
+              echo "health OK"
               exit 0
             fi
             sleep 2
           done
 
+          echo "health check failed; container logs:"
           docker logs planner-test
           exit 1
 
@@ -75,24 +102,31 @@ jobs:
         if: always()
         run: docker rm -f planner-test || true
 
-      - name: Login to GitHub Container Registry
-        if: github.event_name == 'push'
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: cirrascale-planner:ci
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish Docker image
-        if: github.event_name == 'push'
-        env:
-          REPOSITORY: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: |
-          IMAGE="ghcr.io/${REPOSITORY,,}"
-
-          docker tag cirrascale-planner:ci "$IMAGE:$SHA"
-          docker tag cirrascale-planner:ci "$IMAGE:latest"
-
-          docker push "$IMAGE:$SHA"
-          docker push "$IMAGE:latest"
+      - name: Publish image (reuses cached layers)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -9,3 +9,5 @@ node_modules
 coverage
 README.md
 docs
+.DS_Store
+*.local
