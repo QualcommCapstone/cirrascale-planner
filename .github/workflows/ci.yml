@@ -1,0 +1,179 @@
+name: Planner CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel older runs of the same ref when a new one starts.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Build Next.js application
+        run: npm run build
+
+  docker:
+    name: Build, Test & Publish Docker
+    needs: validate
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Derive image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+            type=ref,event=pr
+
+      - name: Build image (load locally for testing)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: cirrascale-planner:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: |
+          docker run -d \
+            --name planner-test \
+            -p 3000:3000 \
+            cirrascale-planner:ci
+
+      - name: Test health endpoint
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health; then
+              echo "health OK"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "health check failed; container logs:"
+          docker logs planner-test
+          exit 1
+
+      - name: Stop test container
+        if: always()
+        run: docker rm -f planner-test || true
+
+      # Live end-to-end check against the real Qualcomm AI Inference Suite.
+      # Needs the CIRRASCALE_API_KEY repo secret; skips cleanly without it
+      # (e.g. fork PRs) so it never fails for contributors who lack the key.
+      - name: Cirrascale inference smoke test
+        env:
+          CIRRASCALE_API_KEY: ${{ secrets.CIRRASCALE_API_KEY }}
+        run: |
+          if [ -z "$CIRRASCALE_API_KEY" ]; then
+            echo "No CIRRASCALE_API_KEY secret set - skipping live inference smoke test." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          docker run -d --name planner-smoke -p 3001:3000 \
+            -e CIRRASCALE_API_KEY="$CIRRASCALE_API_KEY" \
+            cirrascale-planner:ci
+
+          echo "Waiting for liveness..."
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:3001/api/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          echo "## Cirrascale readiness" >> "$GITHUB_STEP_SUMMARY"
+          if ! READY=$(curl -fsS http://localhost:3001/api/ready); then
+            echo "Readiness check FAILED (backend unreachable):" | tee -a "$GITHUB_STEP_SUMMARY"
+            docker logs planner-smoke
+            exit 1
+          fi
+          { echo '```json'; echo "$READY"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Generating a plan via /api/plan ..."
+          RESP=$(curl -fsS -X POST http://localhost:3001/api/plan \
+            -H 'content-type: application/json' \
+            -d '{"goal":"Give a 30-minute demo of this project to a team meeting"}')
+          PLAN=$(printf '%s' "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('plan',''))")
+          if [ -z "$PLAN" ]; then
+            echo "Plan generation returned empty. Raw response:" | tee -a "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' "$RESP"
+            exit 1
+          fi
+          { echo "## Sample generated plan"; echo "$PLAN"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "Smoke test passed: live plan generated."
+
+      - name: Stop smoke container
+        if: always()
+        run: docker rm -f planner-smoke || true
+
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
+        with:
+          image-ref: cirrascale-planner:ci
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish image (reuses cached layers)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
