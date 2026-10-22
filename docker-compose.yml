@@ -1,0 +1,19 @@
+# Local/demo run of the planner against live Cirrascale inference.
+#
+#   export CIRRASCALE_API_KEY=sk-...      # or put it in a .env file next to this
+#   docker compose up --build
+#   open http://localhost:3000/planner
+#
+# Liveness:  curl localhost:3000/api/health
+# Readiness: curl localhost:3000/api/ready   (pings Cirrascale)
+services:
+  planner:
+    build: .
+    image: cirrascale-planner:local
+    ports:
+      - "3000:3000"
+    environment:
+      CIRRASCALE_API_KEY: ${CIRRASCALE_API_KEY:?set CIRRASCALE_API_KEY (see .env.example)}
+      CIRRASCALE_MODEL: ${CIRRASCALE_MODEL:-Llama-3.1-8B}
+      CIRRASCALE_BASE_URL: ${CIRRASCALE_BASE_URL:-https://aisuite.cirrascale.com/apis/v2}
+    restart: unless-stopped

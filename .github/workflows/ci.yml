@@ -102,6 +102,53 @@ jobs:
         if: always()
         run: docker rm -f planner-test || true
 
+      # Live end-to-end check against the real Qualcomm AI Inference Suite.
+      # Needs the CIRRASCALE_API_KEY repo secret; skips cleanly without it
+      # (e.g. fork PRs) so it never fails for contributors who lack the key.
+      - name: Cirrascale inference smoke test
+        env:
+          CIRRASCALE_API_KEY: ${{ secrets.CIRRASCALE_API_KEY }}
+        run: |
+          if [ -z "$CIRRASCALE_API_KEY" ]; then
+            echo "No CIRRASCALE_API_KEY secret set - skipping live inference smoke test." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          docker run -d --name planner-smoke -p 3001:3000 \
+            -e CIRRASCALE_API_KEY="$CIRRASCALE_API_KEY" \
+            cirrascale-planner:ci
+
+          echo "Waiting for liveness..."
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:3001/api/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          echo "## Cirrascale readiness" >> "$GITHUB_STEP_SUMMARY"
+          if ! READY=$(curl -fsS http://localhost:3001/api/ready); then
+            echo "Readiness check FAILED (backend unreachable):" | tee -a "$GITHUB_STEP_SUMMARY"
+            docker logs planner-smoke
+            exit 1
+          fi
+          { echo '```json'; echo "$READY"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Generating a plan via /api/plan ..."
+          RESP=$(curl -fsS -X POST http://localhost:3001/api/plan \
+            -H 'content-type: application/json' \
+            -d '{"goal":"Give a 30-minute demo of this project to a team meeting"}')
+          PLAN=$(printf '%s' "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('plan',''))")
+          if [ -z "$PLAN" ]; then
+            echo "Plan generation returned empty. Raw response:" | tee -a "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' "$RESP"
+            exit 1
+          fi
+          { echo "## Sample generated plan"; echo "$PLAN"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "Smoke test passed: live plan generated."
+
+      - name: Stop smoke container
+        if: always()
+        run: docker rm -f planner-smoke || true
+
       - name: Scan image for vulnerabilities (Trivy)
         uses: aquasecurity/trivy-action@v0.36.0
         continue-on-error: true
