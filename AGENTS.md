@@ -22,6 +22,7 @@ before porting anything here.
 3. `docs/conventions.md` — code style, server/client rules, git, local dev.
 4. `.claude/skills/cirrascale-inference/` — the skill for making model calls.
 5. `docs/features.md` — the feature tracker: what we want to build and where it stands.
+6. `docs/itinerary-schema.md` — the itinerary JSON contract between the LLM, backend, and UI.
 
 ## The golden rules
 
