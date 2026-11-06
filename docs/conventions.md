@@ -41,3 +41,17 @@ cp .env.example .env.local   # add CIRRASCALE_API_KEY
 npm install
 npm run dev                  # http://localhost:3000
 ```
+
+## Testing & CI
+
+- **Unit tests** use Vitest (node env): `npm test` (watch: `npm run test:watch`).
+  Tests live in `src/lib/__tests__/*.test.ts`.
+- Test **pure logic**, not the network. Keep LLM calls out of tests — if route
+  logic needs coverage, extract the pure part into `src/lib` (as
+  `normalizeTrip` was extracted to `src/lib/itinerary.ts`) and test that.
+- The store (`src/lib/store/itinerary.ts`) is testable without React via
+  `useItinerary.getState()` / `.setState()`.
+- **CI** (`.github/workflows/ci.yml`) runs on pushes to `main` / `feature/**`
+  and PRs to `main`: `npm ci` → lint → `tsc --noEmit` → `npm test` → build.
+  No secrets needed — nothing in CI calls Cirrascale.
+- Keep `npm run lint` and `npx tsc --noEmit` clean before pushing; CI enforces both.
