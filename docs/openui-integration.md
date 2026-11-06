@@ -46,6 +46,24 @@ in a **lightweight, hybrid** way:
   `ErrorBoundary` (keyed on the focused stop, so it resets on switch) so OpenUI
   is code-split and can never break the core page.
 
+## Telemetry
+
+- **Install time:** `@openuidev/lang-core` runs a `postinstall` script that
+  sends anonymous usage data (random install ID, salted project hash,
+  Node/OS/package-manager versions, CI info) on every `npm install` / `npm ci`.
+  Per its source it includes no code, prompts, keys, or personal data.
+- **Runtime:** off unless `OPENUI_RUNTIME_TELEMETRY_ENABLED` is set. We don't
+  set it.
+- **We opt out:** CI sets `OPENUI_TELEMETRY_DISABLED=1`
+  (`.github/workflows/ci.yml`). Locally, set it once in your shell environment
+  (Windows: `setx OPENUI_TELEMETRY_DISABLED 1`; macOS/Linux: export it in your
+  shell profile). `.env.local` doesn't work for this, because npm doesn't read
+  it. `DO_NOT_TRACK=1` also works.
+- **OpenUI Inspect:** the floating widget in `npm run dev` is OpenUI's devtools.
+  It only mounts when `NODE_ENV=development` and never ships in a production
+  build. Its "Autofix" / "Get API key" prompts are for Thesys's paid cloud
+  service, which we don't use.
+
 ## Dependencies (why they're here)
 
 `@openuidev/react-ui`, `@openuidev/react-lang`, `@openuidev/lang-core`, plus peers
