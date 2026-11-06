@@ -1,9 +1,20 @@
 "use client";
 
-// Placeholder for the OpenUI-rendered AI detail panel.
-// Implemented in the next step (dynamic-imported OpenUI Renderer fed by /api/chat,
-// with this structured panel as the fallback). Rendering null keeps the core
-// globe + itinerary experience fully functional on its own.
+import dynamic from "next/dynamic";
+import { ErrorBoundary } from "./ErrorBoundary";
+
+// Code-split the OpenUI renderer (heavy) and keep it out of SSR. If anything in
+// the OpenUI pipeline throws, the ErrorBoundary hides it — the structured
+// itinerary cards above remain the reliable source of truth (hybrid design).
+const AiItineraryInner = dynamic(() => import("./AiItineraryInner"), {
+  ssr: false,
+  loading: () => null,
+});
+
 export function AiItinerary() {
-  return null;
+  return (
+    <ErrorBoundary fallback={null}>
+      <AiItineraryInner />
+    </ErrorBoundary>
+  );
 }
