@@ -18,17 +18,18 @@ in a **lightweight, hybrid** way:
 ## How it's wired
 
 - **Client** (`src/components/trip/AiItineraryInner.tsx`):
-  - `generateSystemPrompt({ library: openuiLibrary.toSpec(), promptOptions: openuiPromptOptions })`
-    (`@openuidev/lang-core` + `@openuidev/react-ui`) builds the system prompt
-    describing the component library — done **client-side** so `react-ui` never
-    loads on the server.
-  - Sends `systemPrompt + instruction` to `/api/chat`, gets text back, and renders
-    it with `<Renderer response library={openuiLibrary} isStreaming={false} />`
+  - Sends the focused stop as `{ destination }` to `/api/chat`, gets text back,
+    and renders it with `<Renderer response library={openuiLibrary} isStreaming={false} />`
     (`@openuidev/react-lang`).
   - Imports `@openuidev/react-ui/index.css` for component styles.
-- **Server** (`src/app/api/chat/route.ts`): a thin proxy — `{ prompt }` →
-  `complete()` (the one Cirrascale integration point) → `{ text }`. No OpenUI
-  imports server-side.
+- **Server** (`src/app/api/chat/route.ts`): validates `destination` with zod
+  (length-limited fields), builds the prompt, calls `complete()` (the one
+  Cirrascale integration point) with a fixed `max_tokens`, and returns `{ text }`.
+  - `src/lib/openui.ts`: `generateSystemPrompt({ library: openuiLibrary.toSpec(), promptOptions: openuiPromptOptions })`
+    builds (and caches) the system prompt describing the component library.
+  - `src/lib/planner.ts`: `buildDetailPrompt()` appends the per-stop instruction.
+  - The client never sends a prompt, so the route can't be used as a general
+    completion proxy for our key.
 - **Isolation** (`src/components/trip/AiItinerary.tsx`): `dynamic(ssr:false)` +
   `ErrorBoundary` so OpenUI is code-split and can never break the core page.
 
@@ -53,7 +54,7 @@ store is v4-compatible), **`zod@4`** (lang-core uses `zod/v4/core`), and the
 ## To improve later
 
 - Add streaming (above).
-- Tighten the instruction in `AiItineraryInner` to steer 8B toward a single Card +
+- Tighten the instruction in `buildDetailPrompt()` to steer 8B toward a single Card +
   list and away from style-token leakage.
 - If a chat-completions-compatible model becomes available, the full
   `AgentInterface` becomes viable.

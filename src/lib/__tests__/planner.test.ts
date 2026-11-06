@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildPlannerPrompt, extractPlan, buildItineraryPrompt } from "@/lib/planner";
+import {
+  buildPlannerPrompt,
+  extractPlan,
+  buildItineraryPrompt,
+  buildDetailPrompt,
+} from "@/lib/planner";
 
 describe("buildPlannerPrompt", () => {
   it("includes the user goal", () => {
@@ -34,5 +39,22 @@ describe("buildItineraryPrompt", () => {
     expect(p).toContain("3 days in Lisbon");
     expect(p).toContain('"destinations"');
     expect(p.toLowerCase()).toContain("json");
+  });
+});
+
+describe("buildDetailPrompt", () => {
+  it("puts the system prompt first and includes the stop's data", () => {
+    const p = buildDetailPrompt("SYSTEM", {
+      name: "Kyoto",
+      country: "Japan",
+      dayStart: 3,
+      dayEnd: 5,
+      summary: "Temples and gardens.",
+      activities: ["Fushimi Inari", "Gion walk"],
+    });
+    expect(p.startsWith("SYSTEM")).toBe(true);
+    expect(p).toContain("Destination: Kyoto, Japan");
+    expect(p).toContain("Days: 3-5");
+    expect(p).toContain("Fushimi Inari; Gion walk");
   });
 });

@@ -78,3 +78,28 @@ Request: ${goal.trim()}
 
 JSON:`;
 }
+
+/** Fields of a trip stop the OpenUI detail panel is generated from. */
+export interface DetailStop {
+  name: string;
+  country: string;
+  dayStart: number;
+  dayEnd: number;
+  summary: string;
+  activities: string[];
+}
+
+/**
+ * Prompt for the OpenUI detail panel of one trip stop. `systemPrompt` is the
+ * OpenUI component-library description (see openui.ts).
+ */
+export function buildDetailPrompt(systemPrompt: string, stop: DetailStop): string {
+  return `${systemPrompt}
+
+Design a concise, visual detail panel for this trip stop using the component library. Prefer a Card with a short header, a one-line overview, and the activities as a list. Keep it compact and skimmable.
+
+Destination: ${stop.name}, ${stop.country}
+Days: ${stop.dayStart}-${stop.dayEnd}
+Overview: ${stop.summary}
+Activities: ${stop.activities.join("; ")}`;
+}

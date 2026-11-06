@@ -1,10 +1,9 @@
 "use client";
 
 import "@openuidev/react-ui/index.css";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Renderer } from "@openuidev/react-lang";
-import { openuiLibrary, openuiPromptOptions } from "@openuidev/react-ui";
-import { generateSystemPrompt } from "@openuidev/lang-core";
+import { openuiLibrary } from "@openuidev/react-ui";
 import { Loader2, Sparkles } from "lucide-react";
 import { selectFocused, useItinerary } from "@/lib/store/itinerary";
 
@@ -14,16 +13,6 @@ export default function AiItineraryInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forId, setForId] = useState<string | null>(null);
-
-  // The library describes every component the model may emit. Built once.
-  const systemPrompt = useMemo(
-    () =>
-      generateSystemPrompt({
-        library: openuiLibrary.toSpec(),
-        promptOptions: openuiPromptOptions,
-      }),
-    []
-  );
 
   if (!focused) return null;
 
@@ -35,21 +24,12 @@ export default function AiItineraryInner() {
     setResponse(null);
     setForId(focused.id);
 
-    const instruction = `Design a concise, visual detail panel for this trip stop using the component library. Prefer a Card with a short header, a one-line overview, and the activities as a list. Keep it compact and skimmable.
-
-Destination: ${focused.name}, ${focused.country}
-Days: ${focused.dayStart}-${focused.dayEnd}
-Overview: ${focused.summary}
-Activities: ${focused.activities.join("; ")}`;
-
+    // The server builds the OpenUI prompt from the stop's data.
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: `${systemPrompt}\n\n${instruction}`,
-          maxTokens: 900,
-        }),
+        body: JSON.stringify({ destination: focused }),
       });
       const data = await res.json();
       if (!res.ok) {

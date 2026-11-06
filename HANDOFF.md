@@ -86,8 +86,8 @@ Cirrascale-smoke stages) before/while merging.
   responsive mobile tab toggle.
 - **Itinerary panel** (`src/components/trip/`): composer, day-ranged cards, OpenUI
   AI detail panel.
-- **OpenUI** (hybrid; `docs/openui-integration.md`): `/api/chat` proxy +
-  `@openuidev/react-lang` `Renderer`, system prompt built client-side, dynamic +
+- **OpenUI** (hybrid; `docs/openui-integration.md`): `/api/chat` route +
+  `@openuidev/react-lang` `Renderer`, system prompt built server-side, dynamic +
   error-boundaried with the structured cards as fallback.
 - **Tests + CI**: Vitest (31 tests) for json/geo/planner/itinerary/store;
   `.github/workflows/ci.yml` (npm ci → lint → tsc → test → build).
