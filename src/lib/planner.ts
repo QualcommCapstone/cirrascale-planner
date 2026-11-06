@@ -48,3 +48,33 @@ export function extractPlan(raw: string): string {
 
   return out;
 }
+
+/**
+ * Prompt the model for a STRICT-JSON travel itinerary that can drive the globe.
+ * Coordinates are requested but validated/back-filled server-side (see geo.ts),
+ * so the model being slightly off is tolerable.
+ */
+export function buildItineraryPrompt(goal: string): string {
+  return `You are a travel planner. Turn the request into a structured itinerary.
+
+Return ONLY valid minified JSON (no prose, no code fences) matching exactly:
+{"title": string, "destinations": [{
+  "name": string,            // city/place name only, e.g. "Kyoto"
+  "country": string,
+  "lat": number,             // decimal degrees, -90..90
+  "lng": number,             // decimal degrees, -180..180
+  "dayStart": number,        // 1-based day the stop begins
+  "dayEnd": number,          // day the stop ends (>= dayStart)
+  "summary": string,         // one sentence
+  "activities": string[]     // 2-4 short items
+}]}
+
+Rules:
+- 2 to 6 destinations, ordered as the traveller would visit them.
+- Real coordinates for each city. Days must be contiguous across the trip.
+- No trailing commentary. JSON object only.
+
+Request: ${goal.trim()}
+
+JSON:`;
+}
