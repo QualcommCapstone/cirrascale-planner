@@ -46,10 +46,18 @@ npm run dev                  # http://localhost:3000  →  /planner
 
 ```
 src/app/page.tsx            Landing page
-src/app/planner/page.tsx    Chat UI (client) → POST /api/plan
-src/app/api/plan/route.ts   Server route → Cirrascale
+src/app/planner/page.tsx    Globe + itinerary UI (client) → POST /api/itinerary
+src/app/planner/chat/       Legacy chat UI → POST /api/plan
+src/app/api/itinerary/      Structured itinerary JSON → Cirrascale
+src/app/api/chat/           OpenUI detail panel for one stop → Cirrascale
+src/app/api/plan/route.ts   Markdown plan → Cirrascale
 src/lib/cirrascale.ts       The inference client (only caller of the endpoint)
 src/lib/planner.ts          Prompt construction
-src/components/ui/*          Reused UI primitives (shadcn + magic-ui)
-docs/*                       Steering docs (read these)
+src/lib/itinerary.ts        Model JSON → validated Trip
+src/lib/openui.ts           OpenUI system prompt (server-side)
+src/lib/store/itinerary.ts  Zustand itinerary store
+src/components/globe/*      3D globe (react-globe.gl)
+src/components/trip/*       Composer, itinerary cards, OpenUI panel
+src/components/ui/*         Reused UI primitives (shadcn + magic-ui)
+docs/*                      Steering docs (read these)
 ```

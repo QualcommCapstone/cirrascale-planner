@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatDays } from "@/lib/itinerary";
 import type { Destination } from "@/lib/store/itinerary";
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 
 export function DestinationCard({ destination, index, focused, onFocus }: Props) {
   const { id, name, country, dayStart, dayEnd, summary, activities } = destination;
-  const dayLabel = dayStart === dayEnd ? `Day ${dayStart}` : `Days ${dayStart}–${dayEnd}`;
+  const dayLabel = formatDays(dayStart, dayEnd);
 
   return (
     <button

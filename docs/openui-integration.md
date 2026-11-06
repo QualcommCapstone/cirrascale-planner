@@ -25,13 +25,26 @@ in a **lightweight, hybrid** way:
 - **Server** (`src/app/api/chat/route.ts`): validates `destination` with zod
   (length-limited fields), builds the prompt, calls `complete()` (the one
   Cirrascale integration point) with a fixed `max_tokens`, and returns `{ text }`.
-  - `src/lib/openui.ts`: `generateSystemPrompt({ library: openuiLibrary.toSpec(), promptOptions: openuiPromptOptions })`
-    builds (and caches) the system prompt describing the component library.
-  - `src/lib/planner.ts`: `buildDetailPrompt()` appends the per-stop instruction.
+  - `src/lib/openui.ts`: builds (and caches) the system prompt with
+    `generateSystemPrompt()`, describing only the 8 components a stop panel needs
+    (Stack, Card, CardHeader, TextContent, ListBlock, ListItem, TagBlock,
+    Separator) plus one panel-shaped example and our own rules (no images, use
+    the given activities only). The full library is ~80 components / ~9k
+    tokens; this is ~1.6k. The client still renders with the full library.
+  - `src/lib/planner.ts`: `buildDetailPrompt()` appends the per-stop instruction
+    and ends with `root = `, so the completion starts at the markup. Without it,
+    8B continued the "Activities" data line and invented extra activities.
+    `extractDetailMarkup()` restores that lead, drops anything after a code
+    fence, and strips `#` comments (8B repeats one until `max_tokens`; the API
+    ignores `stop`).
   - The client never sends a prompt, so the route can't be used as a general
     completion proxy for our key.
+  - `next.config.mjs` lists `@openuidev/react-ui` in
+    `serverComponentsExternalPackages`: it's a client-boundary package, and Next
+    won't bundle it into a server route otherwise.
 - **Isolation** (`src/components/trip/AiItinerary.tsx`): `dynamic(ssr:false)` +
-  `ErrorBoundary` so OpenUI is code-split and can never break the core page.
+  `ErrorBoundary` (keyed on the focused stop, so it resets on switch) so OpenUI
+  is code-split and can never break the core page.
 
 ## Dependencies (why they're here)
 
@@ -42,11 +55,12 @@ store is v4-compatible), **`zod@4`** (lang-core uses `zod/v4/core`), and the
 
 ## Known limitations
 
-- **8B output is modest**: it emits thin/duplicated OpenUI Lang and sometimes
-  leaks a style token as text (e.g. `large-heavy`). Acceptable because the
-  structured cards carry the real content. A stronger model (70B, if enabled, or
-  another provider) would improve this immediately — it's a model limit, not a
-  wiring one.
+- **8B output is modest**: with the trimmed prompt it reliably produces a clean
+  Card + list (0 parser errors in live tests, ~4–9s), but the panel mostly
+  restates the itinerary card plus a one-line subtitle per activity, and those
+  subtitles are unverified model text. A stronger model (70B, if enabled) or
+  richer input data (weather, prices, retrieval results) is what would make
+  the panel add real information.
 - **Non-streaming** today (`complete()`), so the panel appears all at once. The
   `Renderer` supports `isStreaming`; add a `stream()` to `src/lib/cirrascale.ts`
   and switch `/api/chat` to a streamed `text/plain` response to enable it.
@@ -54,7 +68,7 @@ store is v4-compatible), **`zod@4`** (lang-core uses `zod/v4/core`), and the
 ## To improve later
 
 - Add streaming (above).
-- Tighten the instruction in `buildDetailPrompt()` to steer 8B toward a single Card +
-  list and away from style-token leakage.
+- Feed the panel richer data than the card already shows, and add the
+  components to `PANEL_COMPONENTS` in `openui.ts` that it then needs.
 - If a chat-completions-compatible model becomes available, the full
   `AgentInterface` becomes viable.

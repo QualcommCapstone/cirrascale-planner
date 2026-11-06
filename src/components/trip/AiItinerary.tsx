@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useItinerary } from "@/lib/store/itinerary";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 // Code-split the OpenUI renderer (heavy) and keep it out of SSR. If anything in
@@ -12,8 +13,10 @@ const AiItineraryInner = dynamic(() => import("./AiItineraryInner"), {
 });
 
 export function AiItinerary() {
+  const focusedId = useItinerary((s) => s.focusedId);
+  // Keyed on the focused stop so one bad render doesn't hide the panel for good.
   return (
-    <ErrorBoundary fallback={null}>
+    <ErrorBoundary key={focusedId ?? "none"} fallback={null}>
       <AiItineraryInner />
     </ErrorBoundary>
   );

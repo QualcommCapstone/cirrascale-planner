@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { complete } from "@/lib/cirrascale";
 import { getOpenUiSystemPrompt } from "@/lib/openui";
-import { buildDetailPrompt } from "@/lib/planner";
+import { buildDetailPrompt, extractDetailMarkup } from "@/lib/planner";
 
 export const runtime = "nodejs";
 
-const MAX_TOKENS = 900;
+// A stop panel with 6 activities is ~250 tokens; anything past that is the
+// model repeating itself, so cap it close.
+const MAX_TOKENS = 350;
 
 // Length limits keep the fields from being used to smuggle in a free-form prompt.
 const StopSchema = z.object({
@@ -40,10 +42,11 @@ export async function POST(req: Request) {
 
   try {
     const prompt = buildDetailPrompt(getOpenUiSystemPrompt(), parsed.data);
-    const text = await complete(prompt, { maxTokens: MAX_TOKENS });
-    return NextResponse.json({ text });
+    const raw = await complete(prompt, { maxTokens: MAX_TOKENS });
+    return NextResponse.json({ text: extractDetailMarkup(raw) });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Log the real error here; upstream response details stay off the client.
+    console.error("[api/chat]", err);
+    return NextResponse.json({ error: "The model request failed. Try again." }, { status: 502 });
   }
 }
