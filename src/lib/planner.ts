@@ -7,6 +7,8 @@
  * Optionally accepts `context` (e.g. scraped page text) to ground the plan.
  */
 
+import { formatDays } from "./itinerary";
+
 const SYSTEM_ROLE = `You are a precise planning assistant. Given a goal, you produce a
 clear, actionable, step-by-step plan. Rules:
 - Output GitHub-flavored Markdown only. No preamble, no sign-off.
@@ -77,4 +79,60 @@ Rules:
 Request: ${goal.trim()}
 
 JSON:`;
+}
+
+/** Fields of a trip stop the OpenUI detail panel is generated from. */
+export interface DetailStop {
+  name: string;
+  country: string;
+  dayStart: number;
+  dayEnd: number;
+  summary: string;
+  activities: string[];
+}
+
+// The detail prompt ends mid-statement so the completion starts at the markup
+// instead of continuing the data lines (which made the model invent activities).
+const DETAIL_LEAD = "root = ";
+
+/**
+ * Prompt for the OpenUI detail panel of one trip stop. `systemPrompt` is the
+ * OpenUI component-library description (see openui.ts).
+ */
+export function buildDetailPrompt(systemPrompt: string, stop: DetailStop): string {
+  const activities = stop.activities.map((a, i) => `${i + 1}. ${a}`).join("\n");
+  return `${systemPrompt}
+
+Design a detail panel for this trip stop, shaped like the example: a Card with a CardHeader (title "${stop.name}${stop.country ? `, ${stop.country}` : ""}", subtitle "${formatDays(stop.dayStart, stop.dayEnd)}"), a one-sentence TextContent overview, and a ListBlock with one ListItem per activity. Give each ListItem a short, practical subtitle.
+
+Overview: ${stop.summary}
+Activities (use exactly these ${stop.activities.length}):
+${activities}
+
+OpenUI Lang:
+${DETAIL_LEAD}`;
+}
+
+/** Drop a trailing `# ...` comment from one line, ignoring `#` inside strings. */
+function stripComment(line: string): string {
+  let inStr = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inStr && ch === "\\") i++;
+    else if (ch === '"') inStr = !inStr;
+    else if (ch === "#" && !inStr) return line.slice(0, i).trimEnd();
+  }
+  return line;
+}
+
+/**
+ * Turn the detail completion back into OpenUI Lang: restore the `root = ` lead
+ * the prompt ended with, drop anything after a closing code fence, and strip
+ * `#` comments (8B tends to repeat one until it hits max_tokens; the API
+ * ignores `stop`, so this is done here).
+ */
+export function extractDetailMarkup(raw: string): string {
+  let text = raw.replace(/^\s*```[a-z-]*\s*/i, "");
+  if (!/^\s*root\s*=/.test(text)) text = DETAIL_LEAD + text;
+  return text.split("```")[0].split("\n").map(stripComment).join("\n").trim();
 }

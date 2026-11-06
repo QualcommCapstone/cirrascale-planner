@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { normalizeTrip, type RawTrip } from "@/lib/itinerary";
+import { formatDays, normalizeTrip, type RawTrip } from "@/lib/itinerary";
 import { useItinerary, selectArcs, selectFocused, type Trip } from "@/lib/store/itinerary";
 
 describe("normalizeTrip", () => {
@@ -118,5 +118,12 @@ describe("useItinerary store", () => {
     expect(s.destinations).toHaveLength(0);
     expect(s.focusedId).toBeNull();
     expect(s.status).toBe("idle");
+  });
+});
+
+describe("formatDays", () => {
+  it("labels single days and ranges", () => {
+    expect(formatDays(6, 6)).toBe("Day 6");
+    expect(formatDays(1, 3)).toBe("Days 1–3");
   });
 });

@@ -39,7 +39,8 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(trip);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Log the real error here; upstream response details stay off the client.
+    console.error("[api/itinerary]", err);
+    return NextResponse.json({ error: "The model request failed. Try again." }, { status: 502 });
   }
 }

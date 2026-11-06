@@ -23,6 +23,11 @@ export interface RawTrip {
   destinations?: RawDestination[];
 }
 
+/** "Day 3" or "Days 1–3", as shown on itinerary cards and the AI panel. */
+export function formatDays(dayStart: number, dayEnd: number): string {
+  return dayStart === dayEnd ? `Day ${dayStart}` : `Days ${dayStart}–${dayEnd}`;
+}
+
 function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }

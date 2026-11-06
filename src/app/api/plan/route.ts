@@ -32,8 +32,9 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ plan: extractPlan(raw) });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Log the real error here; upstream response details stay off the client.
+    console.error("[api/plan]", err);
+    return NextResponse.json({ error: "The model request failed. Try again." }, { status: 502 });
   }
 }
 

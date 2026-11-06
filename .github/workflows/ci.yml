@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# Opt out of OpenUI's install-time telemetry (sent by @openuidev/lang-core's
+# postinstall during npm ci). See docs/openui-integration.md.
+env:
+  OPENUI_TELEMETRY_DISABLED: "1"
+
 # Cancel superseded runs on the same ref.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
