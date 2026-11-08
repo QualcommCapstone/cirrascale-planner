@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 const ItineraryGlobe = dynamic(() => import("./ItineraryGlobe"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="absolute inset-0 flex items-center justify-center">
       <div className="h-24 w-24 animate-pulse rounded-full border border-border" />
     </div>
   ),
