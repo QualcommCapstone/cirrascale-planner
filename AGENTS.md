@@ -22,6 +22,7 @@ before porting anything here.
 3. `docs/conventions.md` — code style, server/client rules, git, local dev.
 4. `.claude/skills/cirrascale-inference/` — the skill for making model calls.
 5. `docs/features.md` — the feature tracker: what we want to build and where it stands.
+6. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
 
 ## The golden rules
 
@@ -50,4 +51,5 @@ src/lib/cirrascale.ts       The inference client (only caller of the endpoint)
 src/lib/planner.ts          Prompt construction
 src/components/ui/*          Reused UI primitives (shadcn + magic-ui)
 docs/*                       Steering docs (read these)
+backend/                     Python (FastAPI) backend + data layer; see backend/README.md
 ```
