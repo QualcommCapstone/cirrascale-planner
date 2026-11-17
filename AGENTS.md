@@ -14,6 +14,16 @@ Sibling repo: **cirrascale-sandbox** — a dependency-light playground for
 experimenting with the same API (completions, streaming, scraping + planning)
 before porting anything here.
 
+## Project Spec
+
+- Read `docs/sponsor-spec.md` before planning any feature or architecture work.
+- The spec is the sponsor's original text. Never edit it.
+- Where the spec and team decisions differ, the "Agreed changes from the
+  original spec" section in `CLAUDE.md` wins.
+- Before finishing a plan, check it against the spec's pipeline: preference
+  capture → retrieval/ranking → itinerary generation → visual presentation →
+  iteration/refinement. Flag anything that drifts from it.
+
 ## Read these, in order
 
 1. `docs/cirrascale-platform.md` — the LLM platform: endpoint, auth, models,
