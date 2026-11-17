@@ -45,3 +45,6 @@ coverage/
 /.agents/
 /skills-lock.json
 /.claude/skills/openui/
+
+# backend demo artifacts
+demo-output/
