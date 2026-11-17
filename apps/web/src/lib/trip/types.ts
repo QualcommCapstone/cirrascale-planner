@@ -5,6 +5,7 @@
  * these types; nothing reaches the UI without passing through there.
  */
 import { z } from "zod";
+import type { DayWeather } from "./weather";
 
 // --- Personalization -------------------------------------------------------
 
@@ -77,6 +78,8 @@ export interface Activity {
 export interface Day {
   day: number;
   activities: Activity[];
+  /** Forecast for this day, when it falls inside Open-Meteo's 16-day window. */
+  weather: DayWeather | null;
 }
 
 export interface FoodPick {

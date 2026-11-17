@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { CATEGORIES, COSTS, MODES, PreferencesSchema, SLOTS, type Trip } from "./types";
+import { WEATHER_CONDITIONS } from "./weather";
 
 const PREFIX = "trip=";
 
@@ -12,6 +13,10 @@ const PREFIX = "trip=";
 const s = (max: number) => z.string().max(max);
 const num = z.number().finite();
 const PhotoSchema = z.object({ url: s(600), creditUrl: s(600), kind: z.enum(["place", "area", "city"]) });
+const WeatherSchema = z.object({
+  condition: z.enum(WEATHER_CONDITIONS),
+  highC: num, lowC: num, precipitationChance: num, indoorAdvised: z.boolean(),
+});
 const ActivitySchema = z.object({
   id: s(120), slot: z.enum(SLOTS), name: s(120), neighborhood: s(100),
   durationMins: num, cost: z.enum(COSTS), category: z.enum(CATEGORIES), reason: s(400),
@@ -23,7 +28,7 @@ const StopSchema = z.object({
   headline: s(160), intro: s(400), stay: z.object({ area: s(100), why: s(200) }),
   food: z.array(z.object({ name: s(120), note: s(200) })).max(4),
   photo: PhotoSchema.nullable(),
-  days: z.array(z.object({ day: num, activities: z.array(ActivitySchema).max(6) })).max(10),
+  days: z.array(z.object({ day: num, activities: z.array(ActivitySchema).max(6), weather: WeatherSchema.nullable() })).max(10),
 });
 const SharedTripSchema = z.object({
   title: s(160), summary: s(400), where: s(100), when: s(100), days: num,

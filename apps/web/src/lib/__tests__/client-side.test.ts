@@ -34,7 +34,7 @@ const trip: Trip = {
       id: "s0-tokyo", city: "Tokyo", country: "Japan", lat: 35.67, lng: 139.65, dayStart: 1, dayEnd: 2,
       headline: "Neon Nights", intro: "Intro.", stay: { area: "Asakusa", why: "Old town" }, food: [],
       photo: { url: "https://upload.wikimedia.org/a.jpg", creditUrl: "https://en.wikipedia.org/wiki/File:a.jpg", kind: "city" },
-      days: [{ day: 1, activities: [activity("a1", true), activity("a2", false)] }],
+      days: [{ day: 1, activities: [activity("a1", true), activity("a2", false)], weather: null }],
     },
     {
       id: "s1-kyoto", city: "Kyoto", country: "Japan", lat: 35.01, lng: 135.77, dayStart: 3, dayEnd: 3,
