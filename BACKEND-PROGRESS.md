@@ -15,7 +15,7 @@ See `docs/monorepo-migration.md`.
 ## Staged commits (plan)
 1. [x] Monorepo migration (move web → apps/web, workspaces, CI, gitignore, docs) — 323848b
 2. [x] FastAPI foundation (/health, /ready, /api/v1/plan+chat stubs, config, CORS, request-id logging)
-3. [ ] API contracts (Pydantic mirror of Trip; OpenAPI → packages/contracts TS)
+3. [x] API contracts (Pydantic mirror of Trip; OpenAPI → packages/contracts TS)
 4. [ ] Provider interfaces + mocks (embedding, vector store, LLM)
 5. [ ] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
 6. [ ] Frontend integration (Next /api/itinerary proxy to FastAPI; configurable URL)
@@ -29,6 +29,14 @@ See `docs/monorepo-migration.md`.
   stubs, pydantic-settings config, CORS, structured JSON logging + request ids.
   CI `api` job added (uv → ruff → pytest, mock mode). Verified: ruff clean, 4
   pytest pass. Next: Stage 3 contracts (Pydantic mirror of Trip + OpenAPI→TS).
+- Stage 3 (pending commit): canonical contracts. `apps/api/app/schemas/trip.py`
+  mirrors the Zod Trip/Stop/Activity model 1:1 (camelCase preserved) + TripEvent,
+  SimplePlanRequest adapter, ChatRequest. `scripts/export_openapi.py` dumps a
+  complete OpenAPI; `packages/contracts` turns it into TS (`openapi-typescript`),
+  re-exported with friendly names. Regression: `contract-check.ts` (compile-time
+  gate — WebTrip must satisfy the generated contract), web vitest + api pytest on
+  a shared `sample-trip.json`. Regenerate with `npm run contracts:generate`.
+  Verified: api 9 pytest, web 113 vitest. Next: Stage 4 providers + mocks.
 
 ## Run it (updated each stage)
 ```bash

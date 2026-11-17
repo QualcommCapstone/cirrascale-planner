@@ -1,0 +1,52 @@
+{
+  "title": "Temples, Ramen & Quiet Gardens",
+  "summary": "A week threading Kyoto's lantern-lit lanes and Osaka's neon kitchens.",
+  "where": "Japan",
+  "when": "Best in late spring",
+  "days": 6,
+  "vibes": ["Local Culture", "Street Food", "Slow Mornings"],
+  "preferences": { "interests": ["Food", "Culture"], "budget": "Mid", "pace": "Balanced" },
+  "stops": [
+    {
+      "id": "stop-kyoto",
+      "city": "Kyoto",
+      "country": "Japan",
+      "lat": 35.0116,
+      "lng": 135.7681,
+      "dayStart": 1,
+      "dayEnd": 3,
+      "headline": "Lanterns and Moss Gardens",
+      "intro": "Temple gardens raked to stillness before the tour buses arrive.",
+      "stay": { "area": "Gion", "why": "Walkable to the old teahouse streets" },
+      "food": [{ "name": "Nishiki Market", "note": "Grazing lunch of pickles and tamago" }],
+      "photo": {
+        "url": "https://upload.wikimedia.org/x.jpg",
+        "creditUrl": "https://commons.wikimedia.org/wiki/File:X.jpg",
+        "kind": "city"
+      },
+      "days": [
+        {
+          "day": 1,
+          "activities": [
+            {
+              "id": "act-fushimi",
+              "slot": "morning",
+              "name": "Fushimi Inari Taisha",
+              "neighborhood": "Fushimi",
+              "durationMins": 120,
+              "cost": "free",
+              "category": "culture",
+              "reason": "Thousands of vermilion torii climbing the mountainside.",
+              "lat": 34.9671,
+              "lng": 135.7727,
+              "verified": true,
+              "photo": null,
+              "sourceUrl": "https://en.wikipedia.org/wiki/Fushimi_Inari-taisha"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "legs": []
+}

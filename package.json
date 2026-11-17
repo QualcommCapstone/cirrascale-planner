@@ -12,7 +12,8 @@
     "start:web": "npm run start --workspace apps/web",
     "lint:web": "npm run lint --workspace apps/web",
     "test:web": "npm run test --workspace apps/web",
-    "test:api": "cd apps/api && uv run pytest"
+    "test:api": "cd apps/api && uv run pytest",
+    "contracts:generate": "cd apps/api && uv run python scripts/export_openapi.py > ../../packages/contracts/openapi.json && cd ../.. && npm run generate --workspace packages/contracts"
   },
   "engines": {
     "node": ">=20"

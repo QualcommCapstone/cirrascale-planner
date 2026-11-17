@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@cirrascale/contracts": "*",
     "@openuidev/lang-core": "^1.1.0",
     "@openuidev/react-lang": "^1.1.0",
     "@openuidev/react-ui": "^0.18.4",
