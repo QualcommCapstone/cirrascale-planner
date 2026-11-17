@@ -19,7 +19,7 @@ See `docs/monorepo-migration.md`.
 4. [x] Provider interfaces + mocks (embedding, vector store, LLM)
 5. [x] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
 6. [x] Frontend integration (Next /api/itinerary proxy to FastAPI; configurable URL)
-7. [ ] Tests + docker-compose + docs
+7. [x] Ingestion CLI + tests + docker-compose + docs
 
 ## Status log
 - Stage 1 (323848b): monorepo migration — web → apps/web (R100 renames), root
@@ -64,6 +64,15 @@ See `docs/monorepo-migration.md`.
   (proxy path, 502 on unreachable, 400 on bad body). Verified: web 116 vitest +
   build; live uvicorn smoke: /health, /ready, /api/v1/plan streams
   outline→stop→done. Next: Stage 7 tests + docker-compose + docs.
+- Stage 7: ingestion + infra + docs. app/services/ingest.py +
+  `python -m app.ingest <jsonl>` (validate → batch-embed → upsert, idempotent,
+  reports ok/failed; never in /plan). infra/docker-compose.yml (Qdrant + API) +
+  apps/api/Dockerfile (uv, non-root, HEALTHCHECK). Qdrant integration test
+  auto-skips without Qdrant. Docs: api-contract, local-development,
+  cirrascale-integration; architecture + AGENTS updated. Verified: api 21 pytest
+  + 1 skipped, ruff clean, compose valid.
+
+## ALL 7 STAGES COMPLETE — mock mode works end-to-end.
 
 ## Run it (updated each stage)
 ```bash

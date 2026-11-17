@@ -1,0 +1,36 @@
+# Local development infra: Qdrant + the FastAPI backend.
+#
+#   docker compose -f infra/docker-compose.yml up -d qdrant   # just the vector DB
+#   docker compose -f infra/docker-compose.yml up --build     # DB + API
+#
+# Defaults to mock embedding/LLM (no Cirrascale key needed) with a real Qdrant.
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../apps/api
+    ports:
+      - "8000:8000"
+    environment:
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-mock}
+      VECTOR_STORE_PROVIDER: ${VECTOR_STORE_PROVIDER:-qdrant}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-places}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      # Set these only when a provider above is 'cirrascale'.
+      CIRRASCALE_API_KEY: ${CIRRASCALE_API_KEY:-}
+      CIRRASCALE_MODEL: ${CIRRASCALE_MODEL:-Llama-3.1-8B}
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:
