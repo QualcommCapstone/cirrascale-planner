@@ -13,8 +13,8 @@ touch the scraper (teammate branches `backend/scraper`, `backend/clean-data-mode
 See `docs/monorepo-migration.md`.
 
 ## Staged commits (plan)
-1. [ ] Monorepo migration (move web → apps/web, workspaces, CI, gitignore, docs)
-2. [ ] FastAPI foundation (/health, /ready, /api/v1/plan, /api/v1/chat, config, CORS, logging)
+1. [x] Monorepo migration (move web → apps/web, workspaces, CI, gitignore, docs) — 323848b
+2. [x] FastAPI foundation (/health, /ready, /api/v1/plan+chat stubs, config, CORS, request-id logging)
 3. [ ] API contracts (Pydantic mirror of Trip; OpenAPI → packages/contracts TS)
 4. [ ] Provider interfaces + mocks (embedding, vector store, LLM)
 5. [ ] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
@@ -22,10 +22,13 @@ See `docs/monorepo-migration.md`.
 7. [ ] Tests + docker-compose + docs
 
 ## Status log
-- (in progress) Stage 1: moved the Next app into `apps/web/` with `git mv`,
-  added root workspace `package.json`, rewrote `.gitignore`, updated CI to a
-  web workspace job, wrote `docs/monorepo-migration.md`. Verifying build/lint/test
-  from `apps/web` next, then commit.
+- Stage 1 (323848b): monorepo migration — web → apps/web (R100 renames), root
+  workspace, CI web job, gitignore, docs. Verified: lint/110 tests/build all pass.
+- Stage 2 (pending commit): FastAPI foundation in apps/api (uv, Python 3.11).
+  `/health`, `/ready` (provider status, no secrets), `/api/v1/plan|chat` 501
+  stubs, pydantic-settings config, CORS, structured JSON logging + request ids.
+  CI `api` job added (uv → ruff → pytest, mock mode). Verified: ruff clean, 4
+  pytest pass. Next: Stage 3 contracts (Pydantic mirror of Trip + OpenAPI→TS).
 
 ## Run it (updated each stage)
 ```bash
