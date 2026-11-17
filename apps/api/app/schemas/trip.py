@@ -19,6 +19,7 @@ Interest = Literal["Food", "Nature", "Culture", "Nightlife"]
 Budget = Literal["Budget", "Mid", "Luxury"]
 Pace = Literal["Relaxed", "Balanced", "Packed"]
 Slot = Literal["morning", "afternoon", "evening"]
+SLOTS: tuple[Slot, ...] = ("morning", "afternoon", "evening")
 Category = Literal["sight", "food", "nature", "culture", "nightlife", "shopping"]
 Cost = Literal["free", "$", "$$", "$$$"]
 Mode = Literal["train", "flight", "bus", "car", "ferry"]
@@ -144,6 +145,9 @@ class StopErrorEvent(BaseModel):
 class DoneEvent(BaseModel):
     type: Literal["done"] = "done"
     ms: int
+    # Rough estimate from structured data; optional so the web's done handler
+    # (which only reads `ms`) stays compatible.
+    estimatedCostUsd: float | None = None
 
 
 class ErrorEvent(BaseModel):

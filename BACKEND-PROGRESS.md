@@ -17,7 +17,7 @@ See `docs/monorepo-migration.md`.
 2. [x] FastAPI foundation (/health, /ready, /api/v1/plan+chat stubs, config, CORS, request-id logging)
 3. [x] API contracts (Pydantic mirror of Trip; OpenAPI → packages/contracts TS)
 4. [x] Provider interfaces + mocks (embedding, vector store, LLM)
-5. [ ] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
+5. [x] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
 6. [ ] Frontend integration (Next /api/itinerary proxy to FastAPI; configurable URL)
 7. [ ] Tests + docker-compose + docs
 
@@ -45,6 +45,17 @@ See `docs/monorepo-migration.md`.
   factory.build_providers() selects from env. Schema app/schemas/place.py + a
   labeled synthetic fixtures/places.jsonl. Verified: ruff clean, 15 pytest.
   Next: Stage 5 RAG orchestration (validate→embed→search→context→LLM→validate→stream).
+- Stage 5 (pending commit): RAG planning in app/services/. rag.generate_trip()
+  streams NDJSON (outline → stop×N → done); plan_trip() assembles a full Trip
+  (chat/tests). prompts.py (grounded outline + per-stop days, with a
+  [source:id] context block), parsing.extract_json, normalize.py (lenient parse +
+  ground each activity against retrieved places → verified/sourceUrl, coords from
+  the place; invented places flagged not trusted), totals.estimate_total_usd (in
+  the done event). /api/v1/plan streams via a queue bridge (no buffering);
+  /api/v1/chat re-plans around the instruction. main.py lifespan builds providers
+  + seeds the in-memory store from fixtures. DoneEvent gained optional
+  estimatedCostUsd → contracts regenerated. Verified: api 19 pytest, ruff clean.
+  Next: Stage 6 frontend integration (Next /api/itinerary proxy to FastAPI).
 
 ## Run it (updated each stage)
 ```bash

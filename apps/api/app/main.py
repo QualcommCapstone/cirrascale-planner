@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 import uuid
@@ -12,16 +13,38 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.logging import configure_logging, request_id_var
+from app.providers import UpsertItem, build_providers
+from app.providers.vector_store import InMemoryVectorStore
 from app.routers import health, v1
 
 settings = get_settings()
 configure_logging(settings.log_level)
 logger = logging.getLogger("api")
 
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Build providers once; seed the in-memory store with fixtures in mock mode
+    so retrieval has something to return offline."""
+    providers = build_providers(settings)
+    if isinstance(providers.vector_store, InMemoryVectorStore):
+        from app.fixtures import load_fixture_places
+
+        places = load_fixture_places()
+        vectors = await providers.embedding.embed_documents([p.embedding_text() for p in places])
+        await providers.vector_store.upsert_places(
+            [UpsertItem(p, v) for p, v in zip(places, vectors, strict=True)]
+        )
+        logger.info("seeded in-memory vector store", extra={"extra_fields": {"places": len(places)}})
+    app.state.providers = providers
+    yield
+
+
 app = FastAPI(
     title="Cirrascale Planner API",
     version="0.1.0",
     summary="Travel planning backend (RAG over Qdrant + Cirrascale AI100).",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

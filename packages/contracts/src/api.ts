@@ -13,7 +13,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Chat */
+        /**
+         * Chat
+         * @description Apply a free-text modification by re-planning around the instruction.
+         *     Returns the full updated Trip (non-streaming).
+         */
         post: operations["chat_api_v1_chat_post"];
         delete?: never;
         options?: never;
@@ -30,7 +34,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plan */
+        /**
+         * Plan
+         * @description Stream a trip as NDJSON: outline -> stop x N -> done.
+         */
         post: operations["plan_api_v1_plan_post"];
         delete?: never;
         options?: never;
@@ -153,6 +160,11 @@ export interface components {
         };
         /** DoneEvent */
         DoneEvent: {
+            /**
+             * Estimatedcostusd
+             * @default null
+             */
+            estimatedCostUsd: number | null;
             /** Ms */
             ms: number;
             /**
@@ -179,6 +191,11 @@ export interface components {
             name: string;
             /** Note */
             note: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
         };
         /** Leg */
         Leg: {
@@ -349,6 +366,19 @@ export interface components {
             goal: string;
             preferences?: components["schemas"]["Preferences"];
         };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -365,7 +395,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -374,6 +408,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -385,7 +428,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TripRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -394,6 +441,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

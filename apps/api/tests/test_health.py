@@ -33,6 +33,6 @@ def test_request_id_echoed_from_header():
     assert r.headers["x-request-id"] == "test-rid-123"
 
 
-def test_v1_endpoints_exist_but_pending():
-    assert client.post("/api/v1/plan").status_code == 501
-    assert client.post("/api/v1/chat").status_code == 501
+def test_plan_requires_a_valid_body():
+    # Empty body fails validation (goal is required); planning is covered in test_rag.
+    assert client.post("/api/v1/plan", json={}).status_code == 422
