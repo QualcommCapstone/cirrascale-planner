@@ -33,7 +33,12 @@ before porting anything here.
 4. `.claude/skills/cirrascale-inference/` — the skill for making model calls.
 5. `docs/features.md` — the feature tracker: what we want to build and where it stands.
 6. `docs/frontend-architecture.md` — landing + `/planner`: staged/streamed trip generation, Wikipedia place checks, story UI, globe sync.
-7. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
+7. `docs/monorepo-migration.md` — the npm-workspaces + FastAPI monorepo (apps/web, apps/api, packages/contracts, infra).
+8. `docs/api-contract.md` — canonical request/response, NDJSON streaming, JSONL ingestion, Qdrant config.
+9. `docs/local-development.md` — run web + api + Qdrant locally (mock mode by default).
+10. `docs/cirrascale-integration.md` — where Cirrascale is used and how to switch mock → real.
+11. `BACKEND-PROGRESS.md` — live checkpoint for the monorepo/backend work.
+12. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
 
 ## The golden rules
 

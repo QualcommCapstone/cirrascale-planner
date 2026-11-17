@@ -2,6 +2,29 @@
 
 > Agent steering doc. Read this before changing how the app is wired.
 
+## Monorepo
+
+npm workspaces + a uv-managed Python backend:
+
+```
+apps/web/            Next.js 14 app (this document below)
+apps/api/            FastAPI backend: RAG planning over Qdrant + Cirrascale
+packages/contracts/  TS types generated from the backend OpenAPI (single source)
+infra/               docker-compose (Qdrant + API)
+docs/                these steering docs
+```
+
+Target pipeline: `User → Next.js → FastAPI → embed → Qdrant retrieval → context
+→ Cirrascale LLM → validated itinerary → Next.js`. The backend runs in **mock
+mode** by default (no embedding model / Qdrant / key needed). The web app's
+`/api/itinerary` keeps working via its in-Next pipeline until `BACKEND_URL` points
+it at FastAPI (`docs/local-development.md`). Details:
+`docs/monorepo-migration.md`, `docs/api-contract.md`, `docs/cirrascale-integration.md`.
+Live status: `BACKEND-PROGRESS.md`.
+
+The rest of this file describes the **web app** (`apps/web`); paths below are
+relative to it.
+
 ## One-liner
 
 A Next.js 14 (App Router) app that turns a one-sentence prompt into a visual
