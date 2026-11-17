@@ -16,7 +16,7 @@ See `docs/monorepo-migration.md`.
 1. [x] Monorepo migration (move web → apps/web, workspaces, CI, gitignore, docs) — 323848b
 2. [x] FastAPI foundation (/health, /ready, /api/v1/plan+chat stubs, config, CORS, request-id logging)
 3. [x] API contracts (Pydantic mirror of Trip; OpenAPI → packages/contracts TS)
-4. [ ] Provider interfaces + mocks (embedding, vector store, LLM)
+4. [x] Provider interfaces + mocks (embedding, vector store, LLM)
 5. [ ] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
 6. [ ] Frontend integration (Next /api/itinerary proxy to FastAPI; configurable URL)
 7. [ ] Tests + docker-compose + docs
@@ -37,6 +37,14 @@ See `docs/monorepo-migration.md`.
   gate — WebTrip must satisfy the generated contract), web vitest + api pytest on
   a shared `sample-trip.json`. Regenerate with `npm run contracts:generate`.
   Verified: api 9 pytest, web 113 vitest. Next: Stage 4 providers + mocks.
+- Stage 4 (pending commit): provider abstractions in app/providers/. Protocols in
+  base.py; Mock + Cirrascale-adapter embedding (deterministic unit vectors; real
+  endpoint stubbed — unconfirmed), InMemory + Qdrant vector stores (cosine +
+  filters; dim/model_version guard so spaces can't mix; UUIDv5 ids = idempotent),
+  Mock + Cirrascale LLM (httpx pooling/timeout/retries, reuses completions config).
+  factory.build_providers() selects from env. Schema app/schemas/place.py + a
+  labeled synthetic fixtures/places.jsonl. Verified: ruff clean, 15 pytest.
+  Next: Stage 5 RAG orchestration (validate→embed→search→context→LLM→validate→stream).
 
 ## Run it (updated each stage)
 ```bash
