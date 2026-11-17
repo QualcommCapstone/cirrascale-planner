@@ -14,6 +14,16 @@ Sibling repo: **cirrascale-sandbox** — a dependency-light playground for
 experimenting with the same API (completions, streaming, scraping + planning)
 before porting anything here.
 
+## Project Spec
+
+- Read `docs/sponsor-spec.md` before planning any feature or architecture work.
+- The spec is the sponsor's original text. Never edit it.
+- Where the spec and team decisions differ, the "Agreed changes from the
+  original spec" section in `CLAUDE.md` wins.
+- Before finishing a plan, check it against the spec's pipeline: preference
+  capture → retrieval/ranking → itinerary generation → visual presentation →
+  iteration/refinement. Flag anything that drifts from it.
+
 ## Read these, in order
 
 1. `docs/cirrascale-platform.md` — the LLM platform: endpoint, auth, models,
@@ -22,7 +32,8 @@ before porting anything here.
 3. `docs/conventions.md` — code style, server/client rules, git, local dev.
 4. `.claude/skills/cirrascale-inference/` — the skill for making model calls.
 5. `docs/features.md` — the feature tracker: what we want to build and where it stands.
-6. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
+6. `docs/frontend-architecture.md` — landing + `/planner`: staged/streamed trip generation, Wikipedia place checks, story UI, globe sync.
+7. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
 
 ## The golden rules
 
@@ -44,12 +55,21 @@ npm run dev                  # http://localhost:3000  →  /planner
 ## Map
 
 ```
-src/app/page.tsx            Landing page
-src/app/planner/page.tsx    Chat UI (client) → POST /api/plan
-src/app/api/plan/route.ts   Server route → Cirrascale
+src/app/page.tsx            Landing page (photo hero; prompt → /planner?q=)
+src/app/planner/page.tsx    Globe + trip story UI (client) → POST /api/itinerary
+src/app/planner/chat/       Legacy chat UI → POST /api/plan
+src/app/api/itinerary/      Streams a trip as NDJSON (outline, then each stop)
+src/app/api/plan/route.ts   Markdown plan → Cirrascale
 src/lib/cirrascale.ts       The inference client (only caller of the endpoint)
-src/lib/planner.ts          Prompt construction
-src/components/ui/*          Reused UI primitives (shadcn + magic-ui)
-docs/*                       Steering docs (read these)
-backend/                     Python (FastAPI) backend + data layer; see backend/README.md
+src/lib/planner.ts          Prompt construction (all prompts)
+src/lib/trip/*              Trip types, generation pipeline, quality checks,
+                            Wikipedia places/photos, share links, formatting
+src/lib/store/trip.ts       Zustand trip store (streaming state, focus/hover)
+src/lib/destinations.ts     Curated landing/sample photos + prompts
+src/components/globe/*      3D globe (react-globe.gl)
+src/components/trip/*       Composer, chips, overview, stop/activity cards
+src/components/landing/*    Landing hero + sample trips
+src/components/ui/*         Reused UI primitives (shadcn + magic-ui)
+docs/*                      Steering docs (read these)
+backend/                    Python data layer (scraping, cleaning, enrichment); see backend/README.md
 ```
