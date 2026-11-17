@@ -1,0 +1,838 @@
+{
+  "components": {
+    "schemas": {
+      "Activity": {
+        "properties": {
+          "category": {
+            "enum": [
+              "sight",
+              "food",
+              "nature",
+              "culture",
+              "nightlife",
+              "shopping"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "cost": {
+            "enum": [
+              "free",
+              "$",
+              "$$",
+              "$$$"
+            ],
+            "title": "Cost",
+            "type": "string"
+          },
+          "durationMins": {
+            "title": "Durationmins",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lng"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "neighborhood": {
+            "title": "Neighborhood",
+            "type": "string"
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Photo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "slot": {
+            "enum": [
+              "morning",
+              "afternoon",
+              "evening"
+            ],
+            "title": "Slot",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sourceurl"
+          },
+          "verified": {
+            "default": false,
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "slot",
+          "name",
+          "neighborhood",
+          "durationMins",
+          "cost",
+          "category",
+          "reason"
+        ],
+        "title": "Activity",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "description": "Body of POST /api/v1/chat: an existing trip plus an instruction.",
+        "properties": {
+          "message": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Preferences"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "trip": {
+            "$ref": "#/components/schemas/Trip"
+          }
+        },
+        "required": [
+          "trip",
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
+      "Day": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/Activity"
+            },
+            "title": "Activities",
+            "type": "array"
+          },
+          "day": {
+            "title": "Day",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "title": "Day",
+        "type": "object"
+      },
+      "DoneEvent": {
+        "properties": {
+          "estimatedCostUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Estimatedcostusd"
+          },
+          "ms": {
+            "title": "Ms",
+            "type": "integer"
+          },
+          "type": {
+            "const": "done",
+            "default": "done",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ms"
+        ],
+        "title": "DoneEvent",
+        "type": "object"
+      },
+      "ErrorEvent": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "const": "error",
+            "default": "error",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ErrorEvent",
+        "type": "object"
+      },
+      "FoodPick": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "note"
+        ],
+        "title": "FoodPick",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Leg": {
+        "properties": {
+          "durationMins": {
+            "title": "Durationmins",
+            "type": "integer"
+          },
+          "estimated": {
+            "default": false,
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "fromId": {
+            "title": "Fromid",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "train",
+              "flight",
+              "bus",
+              "car",
+              "ferry"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "toId": {
+            "title": "Toid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromId",
+          "toId",
+          "mode",
+          "durationMins",
+          "notes"
+        ],
+        "title": "Leg",
+        "type": "object"
+      },
+      "OutlineEvent": {
+        "properties": {
+          "trip": {
+            "$ref": "#/components/schemas/Trip"
+          },
+          "type": {
+            "const": "outline",
+            "default": "outline",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip"
+        ],
+        "title": "OutlineEvent",
+        "type": "object"
+      },
+      "Photo": {
+        "properties": {
+          "creditUrl": {
+            "title": "Crediturl",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "place",
+              "area",
+              "city"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "creditUrl",
+          "kind"
+        ],
+        "title": "Photo",
+        "type": "object"
+      },
+      "Preferences": {
+        "properties": {
+          "budget": {
+            "default": "Mid",
+            "enum": [
+              "Budget",
+              "Mid",
+              "Luxury"
+            ],
+            "title": "Budget",
+            "type": "string"
+          },
+          "interests": {
+            "items": {
+              "enum": [
+                "Food",
+                "Nature",
+                "Culture",
+                "Nightlife"
+              ],
+              "type": "string"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "pace": {
+            "default": "Balanced",
+            "enum": [
+              "Relaxed",
+              "Balanced",
+              "Packed"
+            ],
+            "title": "Pace",
+            "type": "string"
+          }
+        },
+        "title": "Preferences",
+        "type": "object"
+      },
+      "SimplePlanRequest": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Budget"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "days": {
+            "maximum": 30,
+            "minimum": 1,
+            "title": "Days",
+            "type": "integer"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preferences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "destination",
+          "days"
+        ],
+        "title": "SimplePlanRequest",
+        "type": "object"
+      },
+      "Stay": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "area",
+          "why"
+        ],
+        "title": "Stay",
+        "type": "object"
+      },
+      "Stop": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "dayEnd": {
+            "title": "Dayend",
+            "type": "integer"
+          },
+          "dayStart": {
+            "title": "Daystart",
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "food": {
+            "items": {
+              "$ref": "#/components/schemas/FoodPick"
+            },
+            "title": "Food",
+            "type": "array"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intro": {
+            "title": "Intro",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Photo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "stay": {
+            "$ref": "#/components/schemas/Stay"
+          }
+        },
+        "required": [
+          "id",
+          "city",
+          "country",
+          "lat",
+          "lng",
+          "dayStart",
+          "dayEnd",
+          "headline",
+          "intro",
+          "stay"
+        ],
+        "title": "Stop",
+        "type": "object"
+      },
+      "StopErrorEvent": {
+        "properties": {
+          "stopId": {
+            "title": "Stopid",
+            "type": "string"
+          },
+          "type": {
+            "const": "stopError",
+            "default": "stopError",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stopId"
+        ],
+        "title": "StopErrorEvent",
+        "type": "object"
+      },
+      "StopEvent": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "food": {
+            "items": {
+              "$ref": "#/components/schemas/FoodPick"
+            },
+            "title": "Food",
+            "type": "array"
+          },
+          "stopId": {
+            "title": "Stopid",
+            "type": "string"
+          },
+          "type": {
+            "const": "stop",
+            "default": "stop",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stopId",
+          "days",
+          "food"
+        ],
+        "title": "StopEvent",
+        "type": "object"
+      },
+      "Trip": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/Leg"
+            },
+            "title": "Legs",
+            "type": "array"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/Preferences"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/Stop"
+            },
+            "title": "Stops",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "vibes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Vibes",
+            "type": "array"
+          },
+          "when": {
+            "title": "When",
+            "type": "string"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "summary",
+          "where",
+          "when",
+          "days",
+          "preferences"
+        ],
+        "title": "Trip",
+        "type": "object"
+      },
+      "TripRequest": {
+        "description": "Body of POST /api/v1/plan (and the existing /api/itinerary).",
+        "properties": {
+          "goal": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Goal",
+            "type": "string"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/Preferences"
+          }
+        },
+        "required": [
+          "goal"
+        ],
+        "title": "TripRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "summary": "Travel planning backend (RAG over Qdrant + Cirrascale AI100).",
+    "title": "Cirrascale Planner API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/chat": {
+      "post": {
+        "description": "Apply a free-text modification by re-planning around the instruction.\nReturns the full updated Trip (non-streaming).",
+        "operationId": "chat_api_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/plan": {
+      "post": {
+        "description": "Stream a trip as NDJSON: outline -> stop x N -> done.",
+        "operationId": "plan_api_v1_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Process is up. No dependency checks, safe for load-balancer liveness.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Dependency readiness. Reports provider *names* and per-dependency status\nonly \u2014 never URLs, keys, or other infrastructure detail.",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Ready Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

@@ -1,28 +1,47 @@
-# dependencies
-/node_modules
-/.pnp
+# --- dependencies ---
+node_modules/
+.pnp
 .pnp.js
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env
-.env*.local
-
-# typescript
+# --- Next.js / web build output ---
+.next/
+out/
+build/
 *.tsbuildinfo
 next-env.d.ts
+
+# --- Python / FastAPI backend ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- generated data / embeddings / vector store (never commit) ---
+data/
+*.jsonl
+!apps/api/**/fixtures/**/*.jsonl
+qdrant_storage/
+*.duckdb
+*.sqlite
+
+# --- env / secrets ---
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# --- misc ---
+.DS_Store
+*.log
+coverage/
+.playwright-mcp/
+
+# --- local-only scaffolds / tooling (not part of the repo) ---
+/qualcomm_test/
+/.agents/
+/skills-lock.json
+/.claude/skills/openui/
