@@ -8,10 +8,10 @@ never leave the server.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 EmbeddingProvider = Literal["mock", "cirrascale"]
 VectorStoreProvider = Literal["memory", "qdrant"]
@@ -26,8 +26,12 @@ class Settings(BaseSettings):
     # --- app ---
     app_env: str = "development"
     log_level: str = "INFO"
-    # Comma-separated in env, e.g. "http://localhost:3000,https://app.example.com"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # Comma-separated in env, e.g. "http://localhost:3000,https://app.example.com".
+    # NoDecode stops pydantic-settings from JSON-decoding the env value at the
+    # source (which rejects a plain string); the validator below splits it.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     # --- provider selection (mock mode by default) ---
     embedding_provider: EmbeddingProvider = "mock"
@@ -52,9 +56,15 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, v: object) -> object:
-        # Accept a comma-separated string from env as well as a real list/JSON.
-        if isinstance(v, str) and not v.strip().startswith("["):
-            return [o.strip() for o in v.split(",") if o.strip()]
+        # Env value arrives as a raw string (NoDecode). Accept both a JSON array
+        # and a comma-separated list.
+        if isinstance(v, str):
+            s = v.strip()
+            if s.startswith("["):
+                import json
+
+                return json.loads(s)
+            return [o.strip() for o in s.split(",") if o.strip()]
         return v
 
     @property
