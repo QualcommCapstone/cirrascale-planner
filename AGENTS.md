@@ -76,5 +76,6 @@ src/components/trip/*       Composer, chips, overview, stop/activity cards
 src/components/landing/*    Landing hero + sample trips
 src/components/ui/*         Reused UI primitives (shadcn + magic-ui)
 docs/*                      Steering docs (read these)
-backend/                    Python data layer (scraping, cleaning, enrichment); see backend/README.md
+backend/                    Python data layer (scraping, cleaning, enrichment, JSONL export); see backend/README.md
+scraper/                    More sources: OSM, Wikidata coords, DuckDuckGo + Scrapy crawl; see scraper/README.md
 ```

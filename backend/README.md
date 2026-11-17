@@ -58,6 +58,16 @@ many listings were kept, what was dropped and why, and each duplicate it merged
 (with the name score and distance). Running it twice changes nothing. `--reset`
 erases all places.
 
+## Export JSONL for the FastAPI backend
+
+```bash
+uv run python -m app.places.export --city Tokyo --country Japan   # -> data/export/tokyo.jsonl
+```
+
+Writes the `apps/api` ingestion contract (one place per line). Run after `ingest` and
+`enrich`. More sources (OpenStreetMap, web crawl) come from `scraper/`; see
+[`docs/data-layer.md`](../docs/data-layer.md#export-to-the-backend-contract).
+
 ## Checks
 
 ```bash

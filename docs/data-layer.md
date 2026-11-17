@@ -11,8 +11,10 @@
 | Scraper (Wikivoyage) | Done: `backend/app/scraping/` |
 | Clean `Place` format + database + duplicate removal | Done: `backend/app/places/` |
 | Interest tags, price level, indoor/outdoor, structured hours | Done: `backend/app/places/{tags,price,hours,enrich}.py` |
+| More sources: OpenStreetMap, web crawl (DuckDuckGo discovery + Scrapy) | Done: `scraper/` (SCRUM-63), writes `RawListing` files that `ingest` reads unchanged |
+| JSONL export to the backend contract (`apps/api`) | Done: `python -m app.places.export` (SCRUM-63), see [Export](#export-to-the-backend-contract) |
 | Places read API (`GET /places`) | Next (Sem 1: teammates can't read the data yet) |
-| Coordinates for every place | Gap: Tokyo 60%, Sedona 80% have lat/lng |
+| Coordinates for every place | Improved: OSM places always have them; `scraper/ fill-coords` fills Wikivoyage listings from Wikidata |
 | Source links (#13) | Planned (every raw record already has `source_url` + `fetched_at`) |
 | Refresh job | Planned |
 | Hallucination verifier (#12) | Planned |
@@ -43,6 +45,11 @@ it used to.
 | ---------- | ------- | --------------- |
 | Plain HTML (Wikivoyage) | `"static"` | `Fetcher` |
 | JavaScript to load, or blocks simple bots | `"browser"` | `StealthyFetcher` (run `uv run scrapling install` once) |
+
+> **Proposed change (SCRUM-63, for review):** use `"browser"` only for pages that need
+> JavaScript to render. If a site blocks simple bots, don't scrape it: getting past bot
+> blocking conflicts with "never bypass anti-bot measures" (team rule, and the scraper's
+> rules in `scraper/README.md`).
 
 Use an official free API instead of scraping when one exists **and** the site's
 rules allow it.
@@ -196,3 +203,55 @@ migration tool yet (add Alembic when more than one person changes the schema).
 `ingest` loads the city's existing places first and de-duplicates old + new together,
 so a second source or a re-scrape merges into existing rows and keeps their ids.
 Places that disappear from a source are not removed yet (the refresh job, step 5).
+
+## More sources from `scraper/` (SCRUM-63)
+
+`scraper/` (its own uv package; see `scraper/README.md`) writes the same `ScrapeResult`
+JSON as the Wikivoyage scraper, into `backend/data/raw/`:
+
+| File | Source | `source` value | License |
+| ---- | ------ | -------------- | ------- |
+| `<city>-osm.json` | OpenStreetMap via Overpass | `osm` | ODbL 1.0 |
+| `<city>-web.json` | Crawled official/attraction/restaurant sites (JSON-LD / microdata) | `web` | the site's own; facts only, no descriptions |
+
+`ingest` and `enrich` handle them with no changes. OSM puts a readable label of what the
+place is ("Museum", "Ramen restaurant", "Shinto shrine") in `subsection`, so the tag
+rules pick it up. `scraper/ fill-coords <raw.json>` fills missing lat/lng from Wikidata
+(P625) for listings that have a Wikidata ID; run it before `ingest`.
+
+## Export to the backend contract
+
+```bash
+uv run python -m app.places.export --city Tokyo --country Japan   # -> data/export/tokyo.jsonl
+```
+
+Writes one record per line in the shape of `apps/api/app/schemas/place.py` (PR #10), which
+`apps/api`'s `python -m app.ingest` reads. Run after `ingest` and `enrich`.
+
+| Contract field | From `Place` |
+| -------------- | ------------ |
+| `id` | `str(id)` |
+| `country` | `--country` (`Place` has no country) |
+| `category` | `drink`→nightlife, `buy`→shopping, eat→food; see/do by tags: nature/outdoors/hiking/beach/views→nature, museum/art/history/culture/religious/architecture→culture, nightlife, shopping, else sight |
+| `lat`, `lng` | required: places without them are skipped and counted |
+| `price_level` | `price_range` free/low/mid/high → free/$/$$/$$$ |
+| `description` | `description` or `""` |
+| `source_attribution`, `license` | one entry per source (Wikivoyage contributors / © OpenStreetMap contributors / site host; CC BY-SA 4.0 / ODbL 1.0 / see source) |
+| `collected_at` | `fetched_at` |
+
+**Not exported:** `sleep` places (the contract has no lodging category), and tags,
+indoor/outdoor, structured hours, Wikidata ID, and the full `sources` list (no contract
+fields). Raise with the backend developer before changing the contract.
+
+## Proposal: Wikidata match before kind (D7, needs review)
+
+`find_match` returns "different places" for different kinds before it looks at the
+Wikidata ID, and `dedupe` only compares places of the same kind. So an OSM market
+(`amenity=marketplace` → buy → do) and a Wikivoyage Eat listing for the same market never
+merge, even with the same Wikidata ID. `backend/tests/test_dedupe_proposal.py` shows it
+(strict xfail).
+
+Proposed change: in `find_match`, check the Wikidata ID right after the same-id check; in
+`dedupe`, also union places of one city that share a Wikidata ID before blocking by kind.
+When merged, keep the category of the best source (`SOURCE_PRIORITY`). Remove the xfail
+markers in the same commit.
