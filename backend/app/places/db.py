@@ -63,8 +63,11 @@ class PlaceRow(Base):
 
     description: Mapped[str | None] = mapped_column(Text)
     opening_hours: Mapped[str | None] = mapped_column(Text)
+    opening_hours_osm: Mapped[str | None] = mapped_column(Text)
     price_text: Mapped[str | None] = mapped_column(Text)
     price_range: Mapped[str | None] = mapped_column(String(10))
+    price_estimate: Mapped[float | None] = mapped_column(Float)
+    price_currency: Mapped[str | None] = mapped_column(String(3))
     tags: Mapped[list[str]] = mapped_column(JsonType, default=list)
     indoor: Mapped[bool | None] = mapped_column()
 

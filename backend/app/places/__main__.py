@@ -15,11 +15,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from sqlalchemy import Engine
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.places import repo
 from app.places.db import create_tables, make_engine, reset_tables, session_scope
 from app.places.dedupe import MergeNote
+from app.places.enrich import enrich_all
 from app.places.ingest import IngestReport, ingest
 from app.places.models import Category, Place
 from app.scraping.models import ScrapeResult
@@ -42,6 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("stats", help="Count places per city and type.")
 
+    p = sub.add_parser("enrich", help="Re-compute tags, price level, hours and indoor/outdoor.")
+    p.add_argument("city", nargs="?", help="Only this city (default: all).")
+
     p = sub.add_parser("init-db", help="Create the tables (safe to repeat).")
     p.add_argument("--reset", action="store_true", help="Erase every place first.")
     return parser
@@ -59,7 +63,16 @@ def main(argv: Sequence[str] | None = None, engine: Engine | None = None) -> int
             return _show(args, engine)
         if args.command == "stats":
             return _stats(engine)
+        if args.command == "enrich":
+            return _enrich(args, engine)
         return _init_db(args, engine)
+    except ProgrammingError as exc:
+        print(f"The database tables look out of date: {exc.orig}", file=sys.stderr)
+        print(
+            "Fix: `uv run python -m app.places init-db --reset` (erases places), then re-ingest.",
+            file=sys.stderr,
+        )
+        return 2
     except OperationalError as exc:
         print(f"Could not use the database: {exc.orig}", file=sys.stderr)
         print("Check DATABASE_URL in backend/.env (see backend/.env.example).", file=sys.stderr)
@@ -149,7 +162,10 @@ def format_place(place: Place) -> str:
         ("near", place.directions),
         ("lat/lng", f"{place.lat}, {place.lng}" if place.has_coordinates else None),
         ("hours", place.opening_hours),
-        ("price", place.price_text),
+        ("hours*", place.opening_hours_osm),
+        ("price", _price_line(place)),
+        ("tags", ", ".join(place.tags) or None),
+        ("indoor", None if place.indoor is None else ("indoor" if place.indoor else "outdoor")),
         ("about", (place.description or "")[:110] or None),
         ("source", f"{place.source_url}  (fetched {place.fetched_at:%Y-%m-%d})"),
     )
@@ -157,6 +173,13 @@ def format_place(place: Place) -> str:
     if len(place.sources) > 1:
         lines.append(f"    also in  {len(place.sources) - 1} other source page(s)")
     return "\n".join(lines)
+
+
+def _price_line(place: Place) -> str | None:
+    if not (place.price_text or place.price_range):
+        return None
+    level = f"[{place.price_range}] " if place.price_range else ""
+    return f"{level}{place.price_text or ''}".strip()
 
 
 def _stats(engine: Engine) -> int:
@@ -175,13 +198,35 @@ def _stats(engine: Engine) -> int:
                 f"{counts.get('eat', 0):>5} {counts.get('sleep', 0):>5} {total:>6}"
             )
             places = repo.search_places(session, city=city)
-            for label, have in (
-                ("coordinates", sum(p.has_coordinates for p in places)),
-                ("address", sum(p.address is not None for p in places)),
-                ("opening hours", sum(p.opening_hours is not None for p in places)),
-                ("price", sum(p.price_text is not None for p in places)),
+            with_hours = sum(p.opening_hours is not None for p in places)
+            for label, have, of in (
+                ("coordinates", sum(p.has_coordinates for p in places), total),
+                ("address", sum(p.address is not None for p in places), total),
+                ("price level", sum(p.price_range is not None for p in places), total),
+                ("interest tags", sum(bool(p.tags) for p in places), total),
+                ("indoor/outdoor", sum(p.indoor is not None for p in places), total),
+                ("opening hours", with_hours, total),
+                (
+                    "hours understood",
+                    sum(p.opening_hours_osm is not None for p in places),
+                    with_hours,
+                ),
             ):
-                print(f"    with {label:<14} {have:>5} / {total}  ({100 * have // total}%)")
+                pct = 100 * have // of if of else 0
+                print(f"    with {label:<17} {have:>5} / {of}  ({pct}%)")
+    return 0
+
+
+def _enrich(args: argparse.Namespace, engine: Engine) -> int:
+    with session_scope(engine) as session:
+        before = repo.search_places(session, city=args.city)
+        if not before:
+            print("No places found. Run `ingest` first.")
+            return 1
+        after = enrich_all(before)
+        changed = [new for old, new in zip(before, after, strict=True) if old != new]
+        repo.save_places(session, changed)
+    print(f"Checked {len(before)} places; {len(changed)} changed.")
     return 0
 
 

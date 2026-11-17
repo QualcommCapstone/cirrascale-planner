@@ -15,7 +15,8 @@ from app.places.models import Category, Place, SourceRef
 _FIELDS = [
     "name", "city", "district", "address", "directions", "lat", "lng",
     "category", "source_section", "subsection",
-    "description", "opening_hours", "price_text", "price_range", "tags", "indoor",
+    "description", "opening_hours", "opening_hours_osm", "price_text", "price_range",
+    "price_estimate", "price_currency", "tags", "indoor",
     "website", "phone", "wikidata_id", "source", "source_url", "fetched_at",
 ]  # fmt: skip
 

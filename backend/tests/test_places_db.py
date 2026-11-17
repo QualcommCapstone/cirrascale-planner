@@ -26,8 +26,11 @@ def test_a_place_survives_a_round_trip(engine):
         directions="near the south exit",
         description="Okonomiyaki cooked at your table.",
         opening_hours="11:00-22:00",
+        opening_hours_osm="Mo-Su 11:00-22:00",
         price_text="¥1200",
         price_range="low",
+        price_estimate=1200.0,
+        price_currency="JPY",
         tags=["food", "nightlife"],
         indoor=True,
         website="https://shop.example/pasutakan",
@@ -214,3 +217,41 @@ def test_lat_and_lng_must_come_as_a_pair():
 def test_naive_times_are_treated_as_utc():
     p = place("Park", fetched_at=datetime(2026, 1, 1, 12, 0))
     assert p.fetched_at == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+
+# ---- enrichment through the pipeline -------------------------------------------------
+
+
+def test_ingest_fills_tags_price_hours_and_indoor(engine):
+    listing = raw(
+        "Pasutakan",
+        section="eat",
+        subsection="Budget",
+        hours="Tue-Sun 11:00-22:00 (closed Mon)",
+        price="¥1,200",
+    )
+    with session_scope(engine) as session:
+        ingest([listing], session)
+    with session_scope(engine) as session:
+        (found,) = repo.search_places(session)
+    assert found.tags == ["food"] and found.indoor is True
+    assert (found.price_range, found.price_estimate, found.price_currency) == ("low", 1200.0, "JPY")
+    assert found.opening_hours_osm == "Tu-Su 11:00-22:00"
+    assert found.is_open_at(datetime(2026, 11, 17, 12, 0)) is True
+
+
+def test_a_merged_place_is_enriched_from_both_copies(engine):
+    a = raw("Zenpukuji Park", **HERE)
+    b = raw(
+        "Zenpukuji Park",
+        source_url="https://en.wikivoyage.org/wiki/Testville/Annex#Z",
+        lat=35.6896,
+        lng=139.6918,
+        hours="Daily 6AM-8PM",
+        price="Free",
+    )
+    with session_scope(engine) as session:
+        ingest([a, b], session)
+        (found,) = repo.search_places(session)
+    assert found.opening_hours_osm == "Mo-Su 06:00-20:00"
+    assert found.price_range == "free" and found.indoor is False

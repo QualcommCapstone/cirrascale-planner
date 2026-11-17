@@ -44,8 +44,14 @@ uv run python -m app.places ingest data/raw/sedona.json --dry-run
 uv run python -m app.places ingest data/raw/sedona.json
 uv run python -m app.places stats
 uv run python -m app.places show Sedona --category eat --limit 5
+uv run python -m app.places enrich
 uv run python -m app.places init-db --reset
 ```
+
+`enrich` re-computes tags, price level, hours and indoor/outdoor for places already saved,
+after you change a rule in `app/places/tags.py`, `price.py` or `hours.py`.
+If you pull new code and get "tables look out of date", run `init-db --reset` and ingest
+again (there is no migration tool yet).
 
 `--dry-run` cleans and de-duplicates without touching a database. `ingest` prints how
 many listings were kept, what was dropped and why, and each duplicate it merged
@@ -86,7 +92,9 @@ app/places/models.py      Place: the shared clean format
 app/places/clean.py       RawListing -> Place
 app/places/dedupe.py      Duplicate detection and merging (RapidFuzz)
 app/places/db.py, repo.py The places table and save/load functions
-app/places/ingest.py      clean -> de-duplicate -> save
+app/places/enrich.py      tags, price level, structured hours, indoor/outdoor
+app/places/{tags,price,hours}.py  the rules behind enrich
+app/places/ingest.py      clean -> de-duplicate -> enrich -> save
 app/places/__main__.py    The ingest / show / stats command-line tool
 docker-compose.yml        Postgres + pgvector for local development
 tests/                    pytest; fixtures/ holds sample HTML

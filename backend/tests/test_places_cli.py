@@ -67,3 +67,63 @@ def test_init_db_reset_erases_places(tmp_path, engine, capsys):
     assert main(["init-db", "--reset"], engine=engine) == 0
     capsys.readouterr()
     assert main(["stats"], engine=engine) == 1
+
+
+def test_enrich_command_applies_changed_rules_to_saved_places(tmp_path, engine, capsys):
+    from app.places import repo
+    from app.places.db import session_scope
+    from tests.factories import place
+
+    stale = place(
+        "Zenpukuji Park", tags=["nightlife"], indoor=True
+    )  # as saved by an older rule set
+    with session_scope(engine) as session:
+        repo.save_places(session, [stale])
+
+    assert main(["enrich"], engine=engine) == 0
+    assert "Checked 1 places; 1 changed." in capsys.readouterr().out
+    with session_scope(engine) as session:
+        (fixed,) = repo.search_places(session)
+    assert fixed.tags == ["nature", "outdoors"] and fixed.indoor is False
+
+    assert main(["enrich"], engine=engine) == 0  # nothing left to fix
+    assert "1 places; 0 changed" in capsys.readouterr().out
+
+
+def test_stats_and_show_report_the_new_fields(tmp_path, engine, capsys):
+    listings = [
+        raw(
+            "Pasta House",
+            section="eat",
+            hours="Daily 11:00-22:00",
+            price="¥1,200",
+            subsection="Budget",
+        )
+    ]
+    main(["ingest", str(write_scrape(tmp_path, listings))], engine=engine)
+    capsys.readouterr()
+
+    main(["stats"], engine=engine)
+    stats = capsys.readouterr().out
+    for label in ("price level", "interest tags", "indoor/outdoor", "hours understood"):
+        assert f"with {label}" in stats and "1 / 1  (100%)" in stats
+
+    main(["show", "Testville"], engine=engine)
+    shown = capsys.readouterr().out
+    assert "[low] ¥1,200" in shown and "tags     food" in shown and "indoor   indoor" in shown
+    assert "hours*   Mo-Su 11:00-22:00" in shown
+
+
+def test_out_of_date_tables_give_a_helpful_message(tmp_path, engine, capsys):
+    from sqlalchemy import text
+
+    main(["ingest", str(write_scrape(tmp_path, LISTINGS))], engine=engine)
+    with engine.begin() as conn:  # pretend the table was made by an older version
+        conn.execute(text("ALTER TABLE places DROP COLUMN price_estimate"))
+    capsys.readouterr()
+
+    assert main(["show", "Testville"], engine=engine) == 2
+    # Postgres reports a missing column as ProgrammingError (we explain the fix);
+    # SQLite reports it as OperationalError (we point at DATABASE_URL).
+    err = capsys.readouterr().err
+    assert "init-db --reset" in err or "no such column" in err

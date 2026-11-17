@@ -1,6 +1,6 @@
 """The pipeline: raw scraped listings -> clean places -> no duplicates -> database.
 
-    clean_listings()  ->  dedupe(existing places + new places)  ->  save
+    clean_listings()  ->  dedupe(existing places + new places)  ->  enrich()  ->  save
 
 Existing places of the city are loaded first and put at the front of the list,
 so a place keeps its id when a new scrape or a second source describes it again.
@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.places import repo
 from app.places.clean import clean_listings
 from app.places.dedupe import MergeNote, Rules, dedupe
+from app.places.enrich import enrich_all
 from app.places.models import Place
 from app.scraping.models import RawListing
 
@@ -57,6 +58,7 @@ def ingest(
     for city, new_places in by_city.items():
         existing = repo.load_city(session, city) if session is not None else []
         result = dedupe(existing + new_places, rules)
+        result.places = enrich_all(result.places)
         report.duplicates_removed += result.duplicates_removed
         report.refreshed += result.refreshed
         report.merges.extend(result.merges)

@@ -68,11 +68,22 @@ class Place(BaseModel):
     subsection: str | None = Field(default=None, description="e.g. 'Budget', 'Museums'.")
 
     description: str | None = None
-    opening_hours: str | None = Field(default=None, description="As written. Parsed in step 3.")
+    opening_hours: str | None = Field(default=None, description="As written by the source.")
+    opening_hours_osm: str | None = Field(
+        default=None,
+        description="The same hours in OpenStreetMap format, only when we fully understood "
+        "the text. Use `is_open_at()` to query it.",
+    )
     price_text: str | None = Field(default=None, description="As written, e.g. '¥1200'.")
-    price_range: PriceRange | None = Field(default=None, description="Filled in step 3.")
-    tags: list[str] = Field(default_factory=list, description="Interest tags. Filled in step 3.")
-    indoor: bool | None = Field(default=None, description="Filled in step 3.")
+    price_range: PriceRange | None = Field(default=None, description="free / low / mid / high.")
+    price_estimate: float | None = Field(
+        default=None, ge=0, description="Rough per-person cost: the first amount in `price_text`."
+    )
+    price_currency: str | None = Field(default=None, description="ISO code, e.g. 'JPY'.")
+    tags: list[str] = Field(default_factory=list, description="Interest tags, e.g. 'museum'.")
+    indoor: bool | None = Field(
+        default=None, description="True indoors, False outdoors, None unknown or mixed."
+    )
 
     website: str | None = None
     phone: str | None = None
@@ -105,6 +116,14 @@ class Place(BaseModel):
                 SourceRef(source=self.source, url=self.source_url, fetched_at=self.fetched_at)
             ]
         return self
+
+    def is_open_at(self, local_time: datetime) -> bool | None:
+        """Is the place open at this local time (no timezone)? None when we have no usable hours."""
+        if not self.opening_hours_osm:
+            return None
+        from opening_hours import OpeningHours
+
+        return bool(OpeningHours(self.opening_hours_osm).is_open(local_time.replace(tzinfo=None)))
 
     @property
     def has_coordinates(self) -> bool:

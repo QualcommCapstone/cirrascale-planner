@@ -10,7 +10,9 @@
 | ----- | ----- |
 | Scraper (Wikivoyage) | Done: `backend/app/scraping/` |
 | Clean `Place` format + database + duplicate removal | Done: `backend/app/places/` |
-| Tags / prices / hours / indoor-outdoor | Planned |
+| Interest tags, price level, indoor/outdoor, structured hours | Done: `backend/app/places/{tags,price,hours,enrich}.py` |
+| Places read API (`GET /places`) | Next (Sem 1: teammates can't read the data yet) |
+| Coordinates for every place | Gap: Tokyo 60%, Sedona 80% have lat/lng |
 | Source links (#13) | Planned (every raw record already has `source_url` + `fetched_at`) |
 | Refresh job | Planned |
 | Hallucination verifier (#12) | Planned |
@@ -81,10 +83,14 @@ the Postgres table `places`. It maps onto `docs/itinerary-schema.md`:
 | `address`, `directions` | Real street address vs "near X station" hints (sources mix them up). |
 | `lat`, `lng` | Both or neither. About 60–80% of places have them today. |
 | `category` | `see` / `do` / `eat` / `sleep`. |
-| `source_section`, `subsection` | The source's own type (`buy`, `drink`) and heading (`Budget`), kept for step 3. |
+| `source_section`, `subsection` | The source's own type (`buy`, `drink`) and heading (`Budget`). Used for tags and price level. |
 | `description` | |
-| `opening_hours`, `price_text` | As written by the source. Step 3 turns them into structured data. |
-| `price_range` (`free/low/mid/high`), `tags`, `indoor` | Columns exist, **empty until step 3**. |
+| `opening_hours`, `price_text` | As written by the source. |
+| `opening_hours_osm` | The hours in OpenStreetMap format, only when fully understood. `Place.is_open_at(local_datetime)` answers "open then?" (`None` = unknown). |
+| `price_range` | `free` / `low` / `mid` / `high`. Empty when unknown. |
+| `price_estimate`, `price_currency` | Rough per-person cost: the **first** amount in `price_text` (a range gives its middle). |
+| `tags` | Interest tags (list below). |
+| `indoor` | `true` indoors, `false` outdoors, `null` unknown or mixed. |
 | `website`, `phone`, `wikidata_id` | |
 | `source`, `source_url`, `fetched_at` | The main source. A `Place` cannot be created without a web link. |
 | `sources` | Every page that mentioned the place (JSON list of `{source, url, fetched_at}`). |
@@ -106,6 +112,53 @@ placeholders (`?`, `n/a`, `TBD`) become empty, "addresses" that are really direc
 move to `directions`, coordinates of (0, 0) are dropped. A listing with no usable name
 or no web link is dropped and counted, never saved.
 
+## Enrichment (`app/places/enrich.py`)
+
+Runs on every ingest, after duplicates are merged, and again on demand with
+`python -m app.places enrich`. It is **always recomputed from the place's own text**, so
+fixing a rule and re-running it fixes old rows too (no re-scrape). It never invents data:
+when the text doesn't support an answer the field stays empty. Because it recomputes,
+anything written by hand into `tags`, `indoor` or the price fields will be overwritten.
+
+**Opening hours** (`hours.py`) turn text like `Tue-Sun 10:00-17:00 (closed Mon)` into
+`Tu-Su 10:00-17:00`. It only converts text it fully understands, including 12-hour times,
+overnight hours (`17:00-03:00`), day lists (`Fri Sat`), `closed ...` clauses and `24 hours`.
+It refuses anything with seasons, exceptions ("until 19:00 on Fridays"), "happy hour",
+`10-5`, or hours that look like typos. "Last order/entry" notes are ignored. About two
+thirds of the hours text in Tokyo is understood. "Closed on holidays" is not put into the
+structured hours (we have no holiday calendar, and the planner's hours parser rejects a whole
+string containing `PH`); the original text keeps it.
+
+**Price level** (`price.py`), first match wins: the text says free; for eat/sleep the
+Wikivoyage heading (`Budget` = low, `Mid-range` = mid, `Splurge` = high); the amount
+converted to US dollars at a fixed rough rate (JPY, USD, EUR, GBP) against typical prices
+for that type (meal under $12 = low, under $35 = mid; night under $90 / $220; ticket under
+$15 / $50). Amounts in other currencies get no level. Long text (over 200 characters) is
+ignored, since it is usually a paragraph of exceptions.
+
+**Tags and indoor/outdoor** (`tags.py`) are readable keyword rules. They look at the
+name and heading first; the start of the description is used only for sights and
+activities that aren't shops. Mixed evidence ("garden museum") gives `indoor = null`.
+Eating and sleeping places default to indoor unless the name says "food truck", "camp" etc.
+Tags: `food nightlife shopping museum art history culture religious outdoors nature hiking
+beach views family entertainment music sports wellness architecture camping` plus lodging
+types `hotel hostel ryokan`. Known weak spots: no cuisine tags yet, and "kid-friendly" or
+"wheelchair-accessible" from `docs/itinerary-schema.md` are not set (the text rarely says).
+
+Real-data coverage (Tokyo, 761 places): price level 50%, tags 96%, indoor/outdoor 77%.
+
+## Who needs what (from the Feature List sheet)
+
+| Sheet item (timeline) | Data it needs | State |
+| --------------------- | ------------- | ----- |
+| 2 Prompt to itinerary (Sem 1) | Real places per demo city, with source links | Tokyo, Sedona loaded; **no read API yet** |
+| 4 Personalized picks (Sem 1) | Tags, price level, coordinates (distance), embedding text | Done except missing coordinates |
+| 5 Edit by chat (Sem 1) | Look up replacement stops by city, type, tag | Needs the read API |
+| 7 Smart routing (Sem 1/2) | lat/lng on every stop | 20–40% missing |
+| 9 Weather-aware (Sem 1/2) | `indoor` | Done |
+| 6 Budget tracker, 8 Opening hours, 10 Backups, 14 Plan validation, 18 Evals (Sem 2) | `price_estimate`, `is_open_at`, enough places per area, the verifier, evals | Data fields done; verifier and evals not started |
+| 3 Visual itinerary photos (Sem 2) | Photo URL per place | Not collected yet |
+
 ## Duplicates (`app/places/dedupe.py`)
 
 Wrongly merging two real places is worse than keeping a duplicate, so the rules are
@@ -123,7 +176,17 @@ cautious. Two places are the same only if:
 On a merge, each field comes from the best source (`SOURCE_PRIORITY`), then the newest
 fetch; gaps are filled from the other copy, and `sources` lists every page.
 Known miss: "Kanda Shrine" vs "Kanda Myojin Shrine" (28 m apart, name score 77) stay
-separate. Step 3's geocoding should help.
+separate.
+
+## Not built yet, and why
+
+- **OpenStreetMap as a second source / geocoding.** Public servers either disallow bots in
+  robots.txt (`overpass-api.de` blocks `/api/`; `nominatim.openstreetmap.org` blocks
+  `/search`) or didn't answer from our network (`overpass.private.coffee`,
+  `overpass.kumi.systems`). Their usage policies do allow API clients, so this needs a team
+  decision (or our own Overpass instance) before we use it. Data is ODbL (needs
+  "© OpenStreetMap contributors" credit).
+- **Cuisine / accessibility tags**, and **photos** for places.
 
 ## Database
 
