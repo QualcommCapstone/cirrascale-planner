@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import re
 import sys
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 
-from app.scraping.fetch import DEFAULT_USER_AGENT, PoliteFetcher
+from app.config import get_settings
+from app.scraping.fetch import PoliteFetcher
 from app.scraping.models import RawListing, ScrapeResult
 from app.scraping.wikivoyage import scrape_city
 
@@ -47,8 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--delay",
         type=float,
-        default=float(os.environ.get("SCRAPER_MIN_DELAY_S", "3")),
-        help="Minimum seconds between requests to the same site (default 3).",
+        default=None,
+        help="Seconds to wait between requests to one site (default 3, or SCRAPER_MIN_DELAY_S).",
     )
     parser.add_argument("--samples", type=int, default=3, help="Sample places to print.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show every request.")
@@ -70,9 +70,10 @@ def main(argv: Sequence[str] | None = None, fetcher: PoliteFetcher | None = None
     scrapling_log.propagate = False
 
     if fetcher is None:
+        settings = get_settings()
         fetcher = PoliteFetcher(
-            user_agent=os.environ.get("SCRAPER_USER_AGENT", DEFAULT_USER_AGENT),
-            min_delay_s=args.delay,
+            user_agent=settings.scraper_user_agent,
+            min_delay_s=args.delay if args.delay is not None else settings.scraper_min_delay_s,
         )
 
     print(

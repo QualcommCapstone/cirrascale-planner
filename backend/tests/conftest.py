@@ -1,14 +1,17 @@
-"""Shared test helpers: fake HTTP responses and a fake clock, so tests never touch the network."""
+"""Shared test helpers: fake HTTP, a fake clock, and test databases (no internet)."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import os
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 from scrapling.parser import Selector
+from sqlalchemy import Engine, create_engine
 
+from app.places.db import normalize_url, reset_tables
 from app.scraping.fetch import FetcherKind, PoliteFetcher
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -82,3 +85,28 @@ def make_fetcher(clock: FakeClock) -> Callable[..., PoliteFetcher]:
 
 def fixture_html(name: str) -> str:
     return (FIXTURES / name).read_text(encoding="utf-8")
+
+
+# ---- database fixtures -------------------------------------------------------------
+
+
+def _engines() -> list[str]:
+    kinds = ["sqlite"]
+    if os.environ.get("TEST_DATABASE_URL"):
+        kinds.append("postgres")
+    return kinds
+
+
+@pytest.fixture(params=_engines())
+def engine(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Engine]:
+    """An empty database: SQLite always, and real Postgres when TEST_DATABASE_URL is set."""
+    if request.param == "sqlite":
+        eng = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
+    else:
+        url = normalize_url(os.environ["TEST_DATABASE_URL"])
+        eng = create_engine(url)
+        # These tests erase the places table, so never run them on a real database.
+        assert "test" in (eng.url.database or ""), f"refusing to reset non-test database {url}"
+    reset_tables(eng)
+    yield eng
+    eng.dispose()
