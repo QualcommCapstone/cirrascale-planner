@@ -22,8 +22,7 @@ before porting anything here.
 3. `docs/conventions.md` — code style, server/client rules, git, local dev.
 4. `.claude/skills/cirrascale-inference/` — the skill for making model calls.
 5. `docs/features.md` — the feature tracker: what we want to build and where it stands.
-6. `docs/frontend-architecture.md` — the `/planner` globe + itinerary UI (layout, store, globe, data flow).
-7. `docs/openui-integration.md` — how OpenUI renders AI itinerary components (hybrid design, limits).
+6. `docs/frontend-architecture.md` — landing + `/planner`: staged/streamed trip generation, Wikipedia place checks, story UI, globe sync.
 
 ## The golden rules
 
@@ -45,11 +44,20 @@ npm run dev                  # http://localhost:3000  →  /planner
 ## Map
 
 ```
-src/app/page.tsx            Landing page
-src/app/planner/page.tsx    Chat UI (client) → POST /api/plan
-src/app/api/plan/route.ts   Server route → Cirrascale
+src/app/page.tsx            Landing page (photo hero; prompt → /planner?q=)
+src/app/planner/page.tsx    Globe + trip story UI (client) → POST /api/itinerary
+src/app/planner/chat/       Legacy chat UI → POST /api/plan
+src/app/api/itinerary/      Streams a trip as NDJSON (outline, then each stop)
+src/app/api/plan/route.ts   Markdown plan → Cirrascale
 src/lib/cirrascale.ts       The inference client (only caller of the endpoint)
-src/lib/planner.ts          Prompt construction
-src/components/ui/*          Reused UI primitives (shadcn + magic-ui)
-docs/*                       Steering docs (read these)
+src/lib/planner.ts          Prompt construction (all prompts)
+src/lib/trip/*              Trip types, generation pipeline, quality checks,
+                            Wikipedia places/photos, share links, formatting
+src/lib/store/trip.ts       Zustand trip store (streaming state, focus/hover)
+src/lib/destinations.ts     Curated landing/sample photos + prompts
+src/components/globe/*      3D globe (react-globe.gl)
+src/components/trip/*       Composer, chips, overview, stop/activity cards
+src/components/landing/*    Landing hero + sample trips
+src/components/ui/*         Reused UI primitives (shadcn + magic-ui)
+docs/*                      Steering docs (read these)
 ```
