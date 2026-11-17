@@ -4,35 +4,44 @@
 
 ## One-liner
 
-A Next.js 14 (App Router) app that turns a user's prompt into a structured
-Markdown plan. The browser never talks to Cirrascale directly — it posts to our
-own `/api/plan` route, which calls the Qualcomm AI Inference Suite server-side.
+A Next.js 14 (App Router) app that turns a one-sentence prompt into a visual
+trip: real places with photos, a day-by-day plan and a route on a globe. The
+browser never talks to Cirrascale directly — it posts to our own
+`/api/itinerary` route, which calls the Qualcomm AI Inference Suite server-side
+and checks places against Wikipedia.
 
 ## Request flow
 
 ```
-Browser (/planner page)
-  │  POST /api/plan  { goal }
+Browser (/planner)
+  │  POST /api/itinerary  { goal, preferences }      (validated with zod)
   ▼
-Route handler  src/app/api/plan/route.ts
-  │  buildPlannerPrompt(goal)        → src/lib/planner.ts
-  │  complete(prompt, { model })     → src/lib/cirrascale.ts
+Route handler  src/app/api/itinerary/route.ts  → NDJSON stream
+  │  generateTrip()                     → src/lib/trip/generate.ts
+  │    buildOutlinePrompt / buildDaysPrompt   → src/lib/planner.ts
+  │    complete(prompt, { maxTokens })        → src/lib/cirrascale.ts
+  │    parse + quality gate + retry           → src/lib/trip/normalize.ts, quality.ts
+  │    verify places + photos                 → src/lib/trip/places.ts (Wikipedia API)
   ▼
-POST https://aisuite.cirrascale.com/apis/v2/completions   (Bearer key)
-  ▼
-{ choices: [{ text }] }  →  { plan }  →  rendered as Markdown
+{"type":"outline"} → {"type":"stop"} × N → {"type":"done","ms"}
 ```
+
+Details (stages, content rules, Wikipedia matching, UI): `docs/frontend-architecture.md`.
+The legacy markdown chat (`/planner/chat` → `/api/plan`) still works unchanged.
 
 ## Key files
 
-| File                          | Responsibility                                        |
-| ----------------------------- | ----------------------------------------------------- |
-| `src/lib/cirrascale.ts`       | The only place that calls the inference endpoint.     |
-| `src/lib/planner.ts`          | Builds the planner prompt (system + goal + guardrails).|
-| `src/app/api/plan/route.ts`   | HTTP boundary: validates input, returns `{ plan }`.   |
-| `src/app/planner/page.tsx`    | Chat UI (client). Posts to `/api/plan`.               |
-| `src/app/page.tsx`            | Landing page.                                          |
-| `src/components/ui/*`         | shadcn/ui + magic-ui primitives (reused from ORBIT).  |
+| File                              | Responsibility                                         |
+| --------------------------------- | ------------------------------------------------------ |
+| `src/lib/cirrascale.ts`           | The only place that calls the inference endpoint.      |
+| `src/lib/planner.ts`              | All prompts (markdown plan, trip outline, stop days).  |
+| `src/lib/trip/generate.ts`        | Staged trip generation + streaming events.             |
+| `src/lib/trip/places.ts`          | Wikipedia place verification and photos (no API key).  |
+| `src/app/api/itinerary/route.ts`  | HTTP boundary: validates input, streams NDJSON.        |
+| `src/app/api/plan/route.ts`       | Legacy: returns a Markdown `{ plan }`.                  |
+| `src/app/planner/page.tsx`        | Globe + trip story UI (client).                        |
+| `src/app/page.tsx`                | Landing page.                                          |
+| `src/components/ui/*`             | shadcn/ui + magic-ui primitives (reused from ORBIT).   |
 
 ## Design rules
 

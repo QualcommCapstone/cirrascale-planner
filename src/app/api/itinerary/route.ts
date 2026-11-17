@@ -1,46 +1,65 @@
 import { NextResponse } from "next/server";
 import { complete } from "@/lib/cirrascale";
-import { buildItineraryPrompt } from "@/lib/planner";
-import { extractJson } from "@/lib/json";
-import { normalizeTrip, type RawTrip } from "@/lib/itinerary";
+import { generateTrip } from "@/lib/trip/generate";
+import { wikipediaPlaces } from "@/lib/trip/places";
+import { TripRequestSchema, type TripEvent } from "@/lib/trip/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-interface ItineraryRequest {
-  goal?: string;
-}
-
+/**
+ * POST { goal, preferences } -> NDJSON stream of TripEvent lines:
+ * one "outline", then a "stop" (or "stopError") per stop as each finishes,
+ * then "done". A fatal problem is sent as a final "error" line.
+ *
+ * Uses the account's default model (Llama-3.1-8B; 70B returns 429 on the free
+ * tier). See src/lib/trip/generate.ts for the pipeline.
+ */
 export async function POST(req: Request) {
-  let body: ItineraryRequest;
+  let body: unknown;
   try {
-    body = (await req.json()) as ItineraryRequest;
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const goal = body.goal?.trim();
-  if (!goal) {
-    return NextResponse.json({ error: "Missing 'goal'." }, { status: 400 });
+  const parsed = TripRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Send a 'goal' (up to 400 characters) and valid 'preferences'." },
+      { status: 400 }
+    );
   }
 
-  try {
-    // Use the account's default model. (Llama-3.1-70B returns 429 "model not
-    // configured" on the free tier, so we rely on the strict-JSON prompt +
-    // server-side extraction/validation/geo-fallback to tame the 8B output.)
-    const raw = await complete(buildItineraryPrompt(goal), {
-      maxTokens: 1200,
-    });
-    const trip = normalizeTrip(extractJson<RawTrip>(raw), goal);
-    if (!trip) {
-      return NextResponse.json(
-        { error: "Could not parse an itinerary from the model response." },
-        { status: 502 }
-      );
-    }
-    return NextResponse.json(trip);
-  } catch (err) {
-    // Log the real error here; upstream response details stay off the client.
-    console.error("[api/itinerary]", err);
-    return NextResponse.json({ error: "The model request failed. Try again." }, { status: 502 });
-  }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let open = true;
+      const emit = (event: TripEvent) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        } catch {
+          open = false; // client went away; finish quietly
+        }
+      };
+      try {
+        await generateTrip(parsed.data, emit, { complete, places: wikipediaPlaces });
+      } catch (err) {
+        // Log the real error; upstream details stay off the client.
+        console.error("[api/itinerary]", err);
+        emit({ type: "error", message: "Couldn't build a trip from that. Try rephrasing or try again." });
+      } finally {
+        if (open) controller.close();
+        open = false;
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
 }

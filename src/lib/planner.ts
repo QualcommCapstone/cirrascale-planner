@@ -1,13 +1,13 @@
 /**
- * Planner prompt construction.
+ * Prompt construction for every model call.
  *
- * Turns a free-form user goal into a structured prompt for the completions API,
- * then asks the model to return a clean, step-by-step plan in Markdown.
- *
- * Optionally accepts `context` (e.g. scraped page text) to ground the plan.
+ * - Markdown plan (legacy /planner/chat): buildPlannerPrompt + extractPlan.
+ * - Trip generation (/planner): buildOutlinePrompt for the trip shell, then
+ *   buildDaysPrompt once per stop. Both ask for strict JSON that
+ *   src/lib/trip/normalize.ts validates.
  */
 
-import { formatDays } from "./itinerary";
+import type { Preferences } from "./trip/types";
 
 const SYSTEM_ROLE = `You are a precise planning assistant. Given a goal, you produce a
 clear, actionable, step-by-step plan. Rules:
@@ -51,88 +51,140 @@ export function extractPlan(raw: string): string {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Trip generation
+// ---------------------------------------------------------------------------
+
+const PACE_HINT: Record<Preferences["pace"], string> = {
+  Relaxed: "relaxed: unhurried, long stays at each place, few transfers",
+  Balanced: "balanced: a full day without rushing",
+  Packed: "packed: ambitious days that fit in as much as possible",
+};
+
+const BUDGET_HINT: Record<Preferences["budget"], string> = {
+  Budget: "budget: free sights, street food, hostels and simple inns",
+  Mid: "mid-range: a mix of paid sights and good local restaurants",
+  Luxury: "luxury: top restaurants, premium experiences, upscale areas",
+};
+
+/** One line describing the traveller, shared by both trip prompts. */
+export function describePreferences(p: Preferences): string {
+  const interests = p.interests.length ? p.interests.join(", ") : "a bit of everything";
+  return `Traveller: interests ${interests}; budget ${BUDGET_HINT[p.budget]}; pace ${PACE_HINT[p.pace]}.`;
+}
+
+/** Appended on a retry so the model knows exactly what to fix. */
+function retryNote(issues: string[]): string {
+  if (issues.length === 0) return "";
+  const list = issues.slice(0, 8).map((i) => `- ${i}`).join("\n");
+  return `\nYour previous answer had these problems. Fix all of them:\n${list}\n`;
+}
+
+const NO_FILLER = `Never use filler like "explore the city", "immerse yourself", "vibrant culture", "a great place to", "must-visit".`;
+
 /**
- * Prompt the model for a STRICT-JSON travel itinerary that can drive the globe.
- * Coordinates are requested but validated/back-filled server-side (see geo.ts),
- * so the model being slightly off is tolerable.
+ * Trip outline: title, voice, stops, where to stay and eat, and the legs
+ * between stops. Days are planned separately per stop (buildDaysPrompt) so
+ * each call stays small enough for the 8B model to get right.
  */
-export function buildItineraryPrompt(goal: string): string {
-  return `You are a travel planner. Turn the request into a structured itinerary.
+export function buildOutlinePrompt(
+  goal: string,
+  prefs: Preferences,
+  issues: string[] = []
+): string {
+  return `You are an expert travel writer and planner. Plan the trip below as JSON.
 
-Return ONLY valid minified JSON (no prose, no code fences) matching exactly:
-{"title": string, "destinations": [{
-  "name": string,            // city/place name only, e.g. "Kyoto"
-  "country": string,
-  "lat": number,             // decimal degrees, -90..90
-  "lng": number,             // decimal degrees, -180..180
-  "dayStart": number,        // 1-based day the stop begins
-  "dayEnd": number,          // day the stop ends (>= dayStart)
-  "summary": string,         // one sentence
-  "activities": string[]     // 2-4 short items
-}]}
+Return ONLY one minified JSON object, no prose, no code fences, with exactly these keys:
+{"title":string,"summary":string,"where":string,"when":string,"vibes":string[],
+ "stops":[{"city":string,"country":string,"lat":number,"lng":number,"days":number,
+   "headline":string,"intro":string,"stay":{"area":string,"why":string},
+   "food":[{"name":string,"note":string}]}],
+ "legs":[{"mode":"train"|"flight"|"bus"|"car"|"ferry","durationMins":number,"notes":string}]}
 
-Rules:
-- 2 to 6 destinations, ordered as the traveller would visit them.
-- Real coordinates for each city. Days must be contiguous across the trip.
-- No trailing commentary. JSON object only.
-
-Request: ${goal.trim()}
+Writing rules:
+- title: 3-7 words with personality. summary: one vivid sentence about this exact trip.
+- where: the country or region. when: the traveller's dates if given, otherwise the best season, e.g. "Best in late spring".
+- vibes: 2-4 short tags like "Local Culture", "Hidden Gems", "Street Food", "Slow Mornings".
+- 1-4 stops in travel order. days per stop (1-5) must add up to the trip length; if no length is given, choose a sensible one (max 14).
+- headline: a punchy 3-6 word title for the stop that does NOT contain the city name.
+- intro: one sentence on why this place is worth it, with a specific detail.
+- stay.area: a real neighborhood; stay.why: what makes it a good base, in a few words.
+- food: 1-2 real, specific dishes or eateries with a short note.
+- legs: exactly one per gap between stops (number of stops minus 1). notes name the real service, e.g. "Shinkansen Nozomi, covered by the JR Pass".
+- ${NO_FILLER}
+${retryNote(issues)}
+Trip request: ${goal.trim()}
+${describePreferences(prefs)}
 
 JSON:`;
 }
 
-/** Fields of a trip stop the OpenUI detail panel is generated from. */
-export interface DetailStop {
-  name: string;
+export interface DaysPromptStop {
+  city: string;
   country: string;
   dayStart: number;
   dayEnd: number;
-  summary: string;
-  activities: string[];
 }
-
-// The detail prompt ends mid-statement so the completion starts at the markup
-// instead of continuing the data lines (which made the model invent activities).
-const DETAIL_LEAD = "root = ";
 
 /**
- * Prompt for the OpenUI detail panel of one trip stop. `systemPrompt` is the
- * OpenUI component-library description (see openui.ts).
+ * Day-by-day plan for one stop: one entry per day, each with a morning,
+ * afternoon and evening activity. `exclude` lists places already used
+ * elsewhere in the trip.
  */
-export function buildDetailPrompt(systemPrompt: string, stop: DetailStop): string {
-  const activities = stop.activities.map((a, i) => `${i + 1}. ${a}`).join("\n");
-  return `${systemPrompt}
+export function buildDaysPrompt(
+  stop: DaysPromptStop,
+  prefs: Preferences,
+  exclude: string[] = [],
+  issues: string[] = []
+): string {
+  const count = stop.dayEnd - stop.dayStart + 1;
+  const range =
+    count === 1 ? `trip day ${stop.dayStart}` : `trip days ${stop.dayStart}-${stop.dayEnd}`;
+  const avoid = exclude.length ? `\nAlready planned elsewhere (do not repeat): ${exclude.join(", ")}` : "";
 
-Design a detail panel for this trip stop, shaped like the example: a Card with a CardHeader (title "${stop.name}${stop.country ? `, ${stop.country}` : ""}", subtitle "${formatDays(stop.dayStart, stop.dayEnd)}"), a one-sentence TextContent overview, and a ListBlock with one ListItem per activity. Give each ListItem a short, practical subtitle.
+  return `You are an expert local guide. Plan ${count} day${count === 1 ? "" : "s"} in ${stop.city}, ${stop.country} (${range}) as JSON.
 
-Overview: ${stop.summary}
-Activities (use exactly these ${stop.activities.length}):
-${activities}
+Return ONLY one minified JSON object, no prose, no code fences:
+{"days":[{"day":number,"morning":A,"afternoon":A,"evening":A}]}
+where A = {"name":string,"neighborhood":string,"durationMins":number,"cost":"free"|"$"|"$$"|"$$$","category":"sight"|"food"|"nature"|"culture"|"nightlife"|"shopping","reason":string,"lat":number,"lng":number}
 
-OpenUI Lang:
-${DETAIL_LEAD}`;
+Rules:
+- Exactly ${count} day${count === 1 ? "" : "s"}, numbered ${stop.dayStart} to ${stop.dayEnd}. Every slot filled.
+- name: a real, specific, well-known place with its proper name (a temple, market, museum, park, street, restaurant). Never generic like "Local market", and never start with a verb like "Visit".
+- neighborhood: the real district it is in.
+- reason: one sentence with a concrete detail on why it is worth going, written with personality. Do not start with "Visit" or "This".
+- Evenings: a specific food street, restaurant, bar or night spot.
+- No place may appear twice. Keep each day's places close together.
+- lat/lng: the place's real coordinates.
+${fitRules(prefs)}
+- ${NO_FILLER}
+${retryNote(issues)}
+${describePreferences(prefs)}${avoid}
+
+JSON:`;
 }
 
-/** Drop a trailing `# ...` comment from one line, ignoring `#` inside strings. */
-function stripComment(line: string): string {
-  let inStr = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inStr && ch === "\\") i++;
-    else if (ch === '"') inStr = !inStr;
-    else if (ch === "#" && !inStr) return line.slice(0, i).trimEnd();
+const COST_FOR_BUDGET: Record<Preferences["budget"], string> = {
+  Budget: `mostly "free" and "$"`,
+  Mid: `mostly "$" and "$$"`,
+  Luxury: `mostly "$$" and "$$$"`,
+};
+
+const DURATION_FOR_PACE: Record<Preferences["pace"], string> = {
+  Relaxed: "long, unhurried visits (2-3 hours each)",
+  Balanced: "visits of about 1.5-2 hours",
+  Packed: "brisk visits (about 1 hour) so the day covers more ground",
+};
+
+/** Explicit rules so the chips visibly change the plan, not just the outline. */
+function fitRules(p: Preferences): string {
+  const lines = [
+    `- Cost: ${COST_FOR_BUDGET[p.budget]}.`,
+    `- Pace: ${DURATION_FOR_PACE[p.pace]}.`,
+  ];
+  if (p.interests.length) {
+    const cats = p.interests.map((i) => i.toLowerCase()).join(", ");
+    lines.unshift(`- At least 2 of every 3 activities must have category ${cats}.`);
   }
-  return line;
-}
-
-/**
- * Turn the detail completion back into OpenUI Lang: restore the `root = ` lead
- * the prompt ended with, drop anything after a closing code fence, and strip
- * `#` comments (8B tends to repeat one until it hits max_tokens; the API
- * ignores `stop`, so this is done here).
- */
-export function extractDetailMarkup(raw: string): string {
-  let text = raw.replace(/^\s*```[a-z-]*\s*/i, "");
-  if (!/^\s*root\s*=/.test(text)) text = DETAIL_LEAD + text;
-  return text.split("```")[0].split("\n").map(stripComment).join("\n").trim();
+  return lines.join("\n");
 }
