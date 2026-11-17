@@ -18,7 +18,7 @@ See `docs/monorepo-migration.md`.
 3. [x] API contracts (Pydantic mirror of Trip; OpenAPI → packages/contracts TS)
 4. [x] Provider interfaces + mocks (embedding, vector store, LLM)
 5. [x] RAG orchestration (validate → embed → search → context → LLM → validate → stream)
-6. [ ] Frontend integration (Next /api/itinerary proxy to FastAPI; configurable URL)
+6. [x] Frontend integration (Next /api/itinerary proxy to FastAPI; configurable URL)
 7. [ ] Tests + docker-compose + docs
 
 ## Status log
@@ -56,6 +56,14 @@ See `docs/monorepo-migration.md`.
   + seeds the in-memory store from fixtures. DoneEvent gained optional
   estimatedCostUsd → contracts regenerated. Verified: api 19 pytest, ruff clean.
   Next: Stage 6 frontend integration (Next /api/itinerary proxy to FastAPI).
+- Stage 6 (pending commit): frontend integration. src/lib/backend.ts
+  (getBackendUrl, server-only). /api/itinerary: if BACKEND_URL set, proxy-stream
+  from FastAPI /api/v1/plan (no buffering); else the existing in-Next Cirrascale +
+  Wikipedia pipeline (unchanged, not removed). Same TripEvent NDJSON both ways, so
+  the UI is untouched. .env.example documents BACKEND_URL. Tests: proxy.test.ts
+  (proxy path, 502 on unreachable, 400 on bad body). Verified: web 116 vitest +
+  build; live uvicorn smoke: /health, /ready, /api/v1/plan streams
+  outline→stop→done. Next: Stage 7 tests + docker-compose + docs.
 
 ## Run it (updated each stage)
 ```bash

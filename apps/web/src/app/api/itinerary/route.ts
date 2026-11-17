@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete } from "@/lib/cirrascale";
+import { getBackendUrl } from "@/lib/backend";
 import { generateTrip } from "@/lib/trip/generate";
 import { wikipediaPlaces } from "@/lib/trip/places";
 import { TripRequestSchema, type TripEvent } from "@/lib/trip/types";
@@ -7,13 +8,20 @@ import { TripRequestSchema, type TripEvent } from "@/lib/trip/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const NDJSON_HEADERS = {
+  "Content-Type": "application/x-ndjson; charset=utf-8",
+  "Cache-Control": "no-store",
+};
+
 /**
  * POST { goal, preferences } -> NDJSON stream of TripEvent lines:
  * one "outline", then a "stop" (or "stopError") per stop as each finishes,
  * then "done". A fatal problem is sent as a final "error" line.
  *
- * Uses the account's default model (Llama-3.1-8B; 70B returns 429 on the free
- * tier). See src/lib/trip/generate.ts for the pipeline.
+ * Two backends, selected by the BACKEND_URL env (see src/lib/backend.ts):
+ *  - set   -> proxy-stream from the FastAPI backend's /api/v1/plan (no buffering)
+ *  - unset -> the in-Next pipeline (Cirrascale + Wikipedia, src/lib/trip/generate.ts)
+ * Both speak the same TripEvent NDJSON contract, so the UI is unchanged.
  */
 export async function POST(req: Request) {
   let body: unknown;
@@ -29,6 +37,31 @@ export async function POST(req: Request) {
       { error: "Send a 'goal' (up to 400 characters) and valid 'preferences'." },
       { status: 400 }
     );
+  }
+
+  const backendUrl = getBackendUrl();
+  if (backendUrl) {
+    try {
+      const upstream = await fetch(`${backendUrl}/api/v1/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      if (!upstream.ok || !upstream.body) {
+        return NextResponse.json(
+          { error: "The planning backend is unavailable. Try again." },
+          { status: 502 }
+        );
+      }
+      // Pipe the NDJSON stream straight through — no buffering.
+      return new Response(upstream.body, { headers: NDJSON_HEADERS });
+    } catch (err) {
+      console.error("[api/itinerary] backend proxy failed", err);
+      return NextResponse.json(
+        { error: "Couldn't reach the planning backend." },
+        { status: 502 }
+      );
+    }
   }
 
   const encoder = new TextEncoder();
@@ -56,10 +89,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+  return new Response(stream, { headers: NDJSON_HEADERS });
 }
