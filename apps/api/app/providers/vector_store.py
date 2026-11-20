@@ -155,14 +155,17 @@ class QdrantVectorStore:
                     models.FieldCondition(key="category", match=models.MatchAny(any=list(filters.categories)))
                 )
 
-        hits = await self._client.search(
+        # qdrant-client >= 1.10 replaced .search() with the universal
+        # .query_points(); the response carries the hits under .points.
+        response = await self._client.query_points(
             collection_name=self._collection,
-            query_vector=vector,
+            query=vector,
             query_filter=models.Filter(must=conditions),
             limit=limit,
+            with_payload=True,
         )
         results: list[SearchResult] = []
-        for h in hits:
+        for h in response.points:
             payload = dict(h.payload or {})
             payload.pop("model_version", None)
             results.append(SearchResult(place=Place.model_validate(payload), score=float(h.score)))

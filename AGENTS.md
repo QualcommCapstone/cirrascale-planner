@@ -39,6 +39,9 @@ before porting anything here.
 10. `docs/cirrascale-integration.md` — where Cirrascale is used and how to switch mock → real.
 11. `BACKEND-PROGRESS.md` — live checkpoint for the monorepo/backend work.
 12. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
+13. `docs/full-rag-integration.md` — the end-to-end data-grounded path: scraped Tokyo
+    JSONL → Cirrascale embeddings → Qdrant → RAG → Llama → streamed itinerary, plus
+    local setup and the `scripts/demo-full-rag.sh` demo.
 
 ## The golden rules
 
