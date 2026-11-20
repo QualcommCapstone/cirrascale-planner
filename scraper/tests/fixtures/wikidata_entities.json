@@ -1,0 +1,15 @@
+{
+  "entities": {
+    "Q653433": {
+      "id": "Q653433",
+      "claims": {
+        "P625": [{"mainsnak": {"datavalue": {"value": {"latitude": 35.71889, "longitude": 139.77639,
+                                                        "precision": 0.0001, "globe": "http://www.wikidata.org/entity/Q2"},
+                                              "type": "globecoordinate"}}}]
+      }
+    },
+    "Q1": {"id": "Q1", "claims": {}},
+    "Q999999999": {"id": "Q999999999", "missing": ""}
+  },
+  "success": 1
+}

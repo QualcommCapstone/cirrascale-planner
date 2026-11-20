@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!-- Hand-written test page. Place data is illustrative. -->
+<html>
+<head>
+  <title>Example Museum | Visit</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {"@type": "WebSite", "name": "Example Museum site", "url": "https://museum.example.jp/"},
+      {
+        "@type": ["Museum", "TouristAttraction"],
+        "name": "Example  Art Museum",
+        "description": "Long copyrighted marketing text that must not be copied.",
+        "address": {"@type": "PostalAddress", "streetAddress": "1-2-3 Ueno", "addressLocality": "Taito",
+                    "postalCode": "110-0007"},
+        "geo": {"@type": "GeoCoordinates", "latitude": "35.7150", "longitude": "139.7740"},
+        "openingHoursSpecification": [
+          {"@type": "OpeningHoursSpecification", "dayOfWeek": ["https://schema.org/Tuesday", "Wednesday"],
+           "opens": "09:30:00", "closes": "17:00:00"}
+        ],
+        "priceRange": "¥1000",
+        "telephone": "+81 3-0000-0000",
+        "sameAs": ["https://www.wikidata.org/wiki/Q11111111", "https://example.org/other"]
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">{ this is not valid json </script>
+  <script type="application/ld+json">
+  {"@context": "https://schema.org", "@type": "Restaurant", "name": "Museum Cafe Ramen",
+   "servesCuisine": "ramen", "openingHours": ["Mo-Fr 11:00-15:00"], "url": "https://museum.example.jp/cafe"}
+  </script>
+</head>
+<body><h1>Example Art Museum</h1><p>Welcome.</p>
+  <a href="/en/exhibitions/">Exhibitions</a>
+  <a href="/en/museums/annex">Annex</a>
+  <a href="https://other.example.com/attractions/">Elsewhere</a>
+  <a href="/contact">Contact</a>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API (hand-written test fixture; names and ids are illustrative)",
+  "osm3s": {"timestamp_osm_base": "2026-11-17T00:00:00Z"},
+  "elements": [
+    {
+      "type": "way", "id": 101,
+      "center": {"lat": 35.7188, "lon": 139.7765},
+      "tags": {"tourism": "museum", "name": "東京国立博物館", "name:en": "Tokyo National Museum",
+               "wikidata": "Q653433", "website": "https://www.tnm.jp/", "opening_hours": "Tu-Su 09:30-17:00",
+               "addr:housenumber": "13-9", "addr:street": "Ueno Park", "addr:postcode": "110-8712"}
+    },
+    {
+      "type": "node", "id": 202, "lat": 35.7148, "lon": 139.7967,
+      "tags": {"amenity": "place_of_worship", "religion": "buddhist", "name": "浅草寺", "wikidata": "Q1045504",
+               "fee": "no"}
+    },
+    {
+      "type": "node", "id": 303, "lat": 35.6764, "lon": 139.6993,
+      "tags": {"amenity": "place_of_worship", "religion": "shinto", "name": "明治神宮", "name:en": "Meiji Jingu",
+               "wikidata": "Q1061219", "diet:vegetarian": "no"}
+    },
+    {
+      "type": "node", "id": 404, "lat": 35.6586, "lon": 139.7454,
+      "tags": {"tourism": "attraction", "name:en": "Tokyo Tower"}
+    },
+    {
+      "type": "node", "id": 505,
+      "tags": {"tourism": "viewpoint", "name": "No position"}
+    },
+    {
+      "type": "node", "id": 606, "lat": 35.70, "lon": 139.70,
+      "tags": {"tourism": "attraction"}
+    },
+    {
+      "type": "node", "id": 404, "lat": 35.6586, "lon": 139.7454,
+      "tags": {"tourism": "attraction", "name:en": "Tokyo Tower"}
+    },
+    {
+      "type": "node", "id": 707, "lat": 35.69, "lon": 139.70,
+      "tags": {"historic": "castle", "name": "Edo Castle ruins", "wikidata": "Q1361839"}
+    }
+  ]
+}
