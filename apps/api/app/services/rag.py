@@ -26,7 +26,7 @@ from app.schemas.trip import (
     StopEvent,
     TripRequest,
 )
-from app.services import normalize
+from app.services import monitor, normalize
 from app.services.parsing import extract_json
 from app.services.prompts import build_days_prompt, build_outline_prompt
 from app.services.totals import estimate_total_usd
@@ -50,7 +50,19 @@ async def _retrieve(
     providers: Providers, query: str, filters: SearchFilters | None, limit: int
 ) -> list[Place]:
     vector = await providers.embedding.embed_query(query)
+    monitor.record("embed", f"query → embedding ({len(vector)}d): “{query[:48]}”", dim=len(vector))
     results = await providers.vector_store.search(vector, filters=filters, limit=limit)
+    where = []
+    if filters and filters.city:
+        where.append(filters.city)
+    if filters and filters.categories:
+        where.append("/".join(filters.categories))
+    monitor.record(
+        "retrieve",
+        f"Qdrant → {len(results)} places" + (f" [{', '.join(where)}]" if where else ""),
+        count=len(results),
+        top=[r.place.name for r in results[:3]],
+    )
     return [r.place for r in results]
 
 
@@ -69,12 +81,20 @@ async def _plan_day(
         max_tokens=700,
     )
     parsed = normalize.build_days(extract_json(raw), day_num, day_num, window)
-    return parsed[0] if parsed else Day(day=day_num, activities=[])
+    day = parsed[0] if parsed else Day(day=day_num, activities=[])
+    monitor.record(
+        "llm",
+        f"Llama planned day {day_num} of {stop.city} → {len(day.activities)} activities",
+        day=day_num,
+        activities=len(day.activities),
+    )
+    return day
 
 
 async def generate_trip(request: TripRequest, providers: Providers, emit: Emit) -> None:
     start = time.perf_counter()
     prefs = request.preferences
+    monitor.record("request", f"plan requested: “{request.goal[:64]}”", interests=prefs.interests)
 
     # 1-5: retrieve grounding places for the whole trip, build outline.
     seed_places = await _retrieve(providers, request.goal, None, limit=12)
@@ -83,9 +103,11 @@ async def generate_trip(request: TripRequest, providers: Providers, emit: Emit) 
     )
     trip = normalize.build_trip_shell(extract_json(outline_raw), request.goal, prefs)
     if trip is None:
+        monitor.record("done", "outline failed to parse")
         await emit(ErrorEvent(message="Couldn't build a trip from that. Try rephrasing.").model_dump())
         return
 
+    monitor.record("llm", f"Llama drafted outline: “{trip.title}” ({len(trip.stops)} stops)")
     await emit(OutlineEvent(trip=trip).model_dump())
 
     # 6-9: per stop, retrieve + plan days, grounded and validated.
@@ -123,6 +145,7 @@ async def generate_trip(request: TripRequest, providers: Providers, emit: Emit) 
             await emit(StopErrorEvent(stopId=stop.id).model_dump())
 
     ms = int((time.perf_counter() - start) * 1000)
+    monitor.record("done", f"itinerary complete in {ms} ms", ms=ms, stops=len(trip.stops))
     await emit(DoneEvent(ms=ms, estimatedCostUsd=estimate_total_usd(trip)).model_dump())
 
 

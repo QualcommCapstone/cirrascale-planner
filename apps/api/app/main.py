@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.logging import configure_logging, request_id_var
 from app.providers import UpsertItem, build_providers
 from app.providers.vector_store import InMemoryVectorStore
-from app.routers import health, v1
+from app.routers import health, monitor, v1
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -90,3 +90,4 @@ async def request_context(request: Request, call_next):
 
 app.include_router(health.router)
 app.include_router(v1.router)
+app.include_router(monitor.router)
