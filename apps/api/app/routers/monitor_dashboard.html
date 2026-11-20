@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pipeline Monitor · Cirrascale Planner</title>
+<style>
+  :root {
+    --bg:#0e0f13; --panel:#16181f; --panel2:#1d2029; --border:#262a35;
+    --text:#e7e9ee; --dim:#9aa0ad; --accent:#a78bfa; --accent2:#7c6cf0;
+    --request:#f0b24a; --embed:#56c2a6; --retrieve:#5aa9f0; --llm:#a78bfa; --done:#7ee081;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Inter,sans-serif; }
+  header { padding:18px 20px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; letter-spacing:-.01em; }
+  header .live { margin-left:auto; display:flex; align-items:center; gap:7px; color:var(--dim); font-size:12px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#555; }
+  .dot.on { background:var(--done); box-shadow:0 0 8px var(--done); }
+  .badges { display:flex; gap:8px; flex-wrap:wrap; }
+  .badge { font-size:11px; color:var(--dim); background:var(--panel2); border:1px solid var(--border);
+    padding:3px 9px; border-radius:999px; }
+  .badge b { color:var(--text); font-weight:600; }
+  main { padding:20px; max-width:1100px; margin:0 auto; }
+  .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:stretch; }
+  @media (max-width:820px){ .flow{ grid-template-columns:1fr 1fr; } }
+  .stage { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px;
+    position:relative; transition:box-shadow .2s,border-color .2s; }
+  .stage.pulse { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent),0 0 24px -6px var(--accent); }
+  .stage .k { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); }
+  .stage .n { font-size:26px; font-weight:700; margin-top:6px; }
+  .stage .s { font-size:12px; color:var(--dim); margin-top:2px; }
+  .stage .bar { position:absolute; left:0; top:0; height:3px; width:100%; border-radius:12px 12px 0 0; background:var(--c); opacity:.9; }
+  .cols { display:grid; grid-template-columns:1.1fr 1fr; gap:16px; margin-top:18px; }
+  @media (max-width:820px){ .cols{ grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .card h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin:0 0 12px; }
+  .feed { height:420px; overflow:auto; display:flex; flex-direction:column-reverse; gap:0; }
+  .ev { display:flex; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border); align-items:baseline; }
+  .ev:first-child { animation:flash .8s ease; }
+  @keyframes flash { from{ background:rgba(167,139,250,.14);} to{ background:transparent; } }
+  .ev .t { color:var(--dim); font-variant-numeric:tabular-nums; font-size:11px; min-width:62px; }
+  .ev .tag { font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:1px 7px; border-radius:999px;
+    border:1px solid var(--c); color:var(--c); min-width:62px; text-align:center; }
+  .ev .m { flex:1; }
+  .ds { display:flex; flex-direction:column; gap:12px; }
+  .row { display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding-bottom:7px; }
+  .row .v { font-weight:600; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { font-size:12px; background:var(--panel2); border:1px solid var(--border); padding:3px 9px; border-radius:8px; }
+  .chip b { color:var(--accent); }
+  button { background:var(--accent2); color:#fff; border:0; border-radius:9px; padding:9px 14px;
+    font-size:13px; font-weight:600; cursor:pointer; }
+  button:hover { background:var(--accent); } button:disabled{ opacity:.5; cursor:default; }
+  .hint { color:var(--dim); font-size:12px; margin-top:10px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Pipeline Monitor</h1>
+  <div class="badges" id="badges"></div>
+  <div class="live"><span class="dot" id="dot"></span><span id="livetxt">connecting…</span></div>
+</header>
+<main>
+  <div class="flow" id="flow"></div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>Live event feed</h2>
+      <div class="feed" id="feed"></div>
+      <div class="hint">Plan a trip at <a href="http://localhost:3000/planner" target="_blank">localhost:3000/planner</a>
+        and watch the stages light up — or replay the embedding step below.</div>
+      <div style="margin-top:12px"><button id="demo">▶ Embed 5 scraped places (live)</button></div>
+    </div>
+    <div class="card">
+      <h2>Scraped corpus → embeddings → Qdrant</h2>
+      <div class="ds" id="dataset"></div>
+    </div>
+  </div>
+</main>
+<script>
+const STAGES = [
+  ["request","Requests","plans received","var(--request)"],
+  ["embed","Embeddings","texts → vectors","var(--embed)"],
+  ["retrieve","Qdrant","vector searches","var(--retrieve)"],
+  ["llm","Llama 3.1 8B","completions","var(--llm)"],
+  ["done","Completed","itineraries","var(--done)"],
+];
+const flow = document.getElementById('flow');
+const cards = {};
+for (const [k,title,sub,c] of STAGES){
+  const el = document.createElement('div');
+  el.className='stage'; el.style.setProperty('--c',c);
+  el.innerHTML = `<span class="bar"></span><div class="k">${title}</div><div class="n" id="n-${k}">0</div><div class="s">${sub}</div>`;
+  flow.appendChild(el); cards[k]=el;
+}
+const tagColor = {request:'var(--request)',embed:'var(--embed)',retrieve:'var(--retrieve)',llm:'var(--llm)',done:'var(--done)'};
+function fmtTime(ts){ const d=new Date(ts*1000); return d.toLocaleTimeString([], {hour12:false})+'.'+String(d.getMilliseconds()).padStart(3,'0'); }
+const feed = document.getElementById('feed');
+function addEvent(e, animate){
+  const row=document.createElement('div'); row.className='ev'; row.style.setProperty('--c', tagColor[e.stage]||'var(--dim)');
+  row.innerHTML = `<span class="t">${fmtTime(e.ts)}</span><span class="tag">${e.stage}</span><span class="m"></span>`;
+  row.querySelector('.m').textContent = e.message;
+  feed.prepend(row);
+  while(feed.children.length>120) feed.removeChild(feed.lastChild);
+  if(animate){ const s=cards[e.stage]; if(s){ s.classList.add('pulse'); setTimeout(()=>s.classList.remove('pulse'),600); } }
+}
+async function refreshStats(){
+  try{
+    const r = await fetch('/api/v1/monitor/stats'); const d = await r.json();
+    for (const [k] of STAGES){ document.getElementById('n-'+k).textContent = d.counters[k]||0; }
+    const p = d.providers||{};
+    document.getElementById('badges').innerHTML =
+      `<span class="badge">embedding <b>${p.embedding}</b></span>`+
+      `<span class="badge">model <b>${p.embedding_model||'—'}</b></span>`+
+      `<span class="badge">vector store <b>${p.vector_store}</b></span>`+
+      `<span class="badge">llm <b>${p.llm} · ${p.llm_model||''}</b></span>`;
+    const ds=d.dataset||{}; const el=document.getElementById('dataset');
+    const cats = Object.entries(ds.categories||{}).map(([k,v])=>`<span class="chip">${k} <b>${v}</b></span>`).join('') || '<span class="chip">n/a</span>';
+    el.innerHTML =
+      `<div class="row"><span>Places indexed</span><span class="v">${ds.points??'—'}</span></div>`+
+      `<div class="row"><span>Embedding model</span><span class="v">${ds.model||'—'}</span></div>`+
+      `<div class="row"><span>Vector space</span><span class="v">${ds.dim? ds.dim+'d · '+ds.distance : '—'}</span></div>`+
+      `<div class="row"><span>Collection</span><span class="v">${ds.collection||'—'}</span></div>`+
+      `<div><div style="color:var(--dim);margin-bottom:6px">By category (scraped)</div><div class="chips">${cats}</div></div>`;
+  }catch(e){}
+}
+(async ()=>{
+  await refreshStats();
+  try{ const r=await fetch('/api/v1/monitor/stats'); const d=await r.json();
+    (d.events||[]).slice(-40).forEach(e=>addEvent(e,false)); }catch(e){}
+  const es = new EventSource('/api/v1/monitor/stream');
+  es.onopen = ()=>{ document.getElementById('dot').classList.add('on'); document.getElementById('livetxt').textContent='live'; };
+  es.onerror = ()=>{ document.getElementById('dot').classList.remove('on'); document.getElementById('livetxt').textContent='reconnecting…'; };
+  es.onmessage = (m)=>{ const e=JSON.parse(m.data); addEvent(e,true); refreshStats(); };
+})();
+setInterval(refreshStats, 4000);
+document.getElementById('demo').onclick = async (ev)=>{
+  const btn=ev.currentTarget; btn.disabled=true; btn.textContent='embedding…';
+  try{ await fetch('/api/v1/monitor/demo-embed',{method:'POST'}); }catch(e){}
+  btn.disabled=false; btn.textContent='▶ Embed 5 scraped places (live)';
+};
+</script>
+</body>
+</html>
