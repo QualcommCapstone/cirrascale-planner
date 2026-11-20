@@ -42,8 +42,13 @@ class Settings(BaseSettings):
     cirrascale_api_key: str | None = None
     cirrascale_base_url: str = "https://aisuite.cirrascale.com/apis/v2"
     cirrascale_model: str = "Llama-3.1-8B"
-    # The embedding model/endpoint/dimension are not confirmed yet.
+    # Cirrascale embedding model (OpenAI-compatible /embeddings). Options:
+    #   BAAI/bge-base-en-v1.5  (768-dim, default)   BAAI/bge-large-en-v1.5 (1024-dim)
     cirrascale_embedding_model: str | None = None
+    embedding_batch_size: int = 64
+    # Optional instruction prepended to QUERIES only. BGE docs suggest one, but the
+    # Cirrascale-hosted BGE scored worse with it, so default off. See docs.
+    embedding_query_instruction: str = ""
     request_timeout_seconds: float = 60.0
 
     # --- vector store ---

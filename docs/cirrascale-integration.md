@@ -9,7 +9,7 @@ flow. Full platform reference: `docs/cirrascale-platform.md`.
 | ----- | ---- | --- |
 | Web (current) | `apps/web/src/lib/cirrascale.ts` | `complete()` — the in-Next trip pipeline + legacy `/api/plan`. |
 | Backend LLM | `apps/api/app/providers/llm.py` | `CirrascaleLLMProvider` — reuses the same completions config (Bearer key, `{prompt, model, stream, max_tokens}` → `choices[0].text`) with pooling, timeout, bounded retries. |
-| Backend embedding | `apps/api/app/providers/embedding.py` | `CirrascaleEmbeddingProvider` — **adapter stub**; the embedding model/endpoint/dimension are not confirmed yet. |
+| Backend embedding | `apps/api/app/providers/embedding.py` | `CirrascaleEmbeddingProvider` — **implemented**. OpenAI-compatible `POST /embeddings`; `BAAI/bge-base-en-v1.5` (768-dim, default) or `BAAI/bge-large-en-v1.5` (1024-dim). Batched, pooled, retried; dim fixed by the model. |
 
 All three are selected by config and are server-only.
 
@@ -26,17 +26,22 @@ All three are selected by config and are server-only.
 
 1. **LLM**: set `LLM_PROVIDER=cirrascale` + `CIRRASCALE_API_KEY`. Done — the RAG
    pipeline is unchanged.
-2. **Embedding** (when available): set `CIRRASCALE_EMBEDDING_MODEL` and implement
-   the httpx call in `CirrascaleEmbeddingProvider` (the only TODO). Pick the
-   matching `VECTOR_DIM`; re-ingest so the Qdrant collection holds vectors from one
-   model/space (payloads carry `model_version` to enforce this).
+2. **Embedding**: set `EMBEDDING_PROVIDER=cirrascale` (+ `CIRRASCALE_API_KEY`).
+   Default model `BAAI/bge-base-en-v1.5` (768-dim); `BAAI/bge-large-en-v1.5` is
+   1024-dim. The dimension is fixed by the model (no `VECTOR_DIM` needed for real
+   embeddings). Re-ingest so the Qdrant collection holds one model/space (payloads
+   carry `model_version` to enforce this). `EMBEDDING_QUERY_INSTRUCTION` is off by
+   default — the hosted BGE scored worse with the usual BGE query instruction.
 3. **Vector store**: `VECTOR_STORE_PROVIDER=qdrant` + `QDRANT_URL`, then ingest
    JSONL (`docs/api-contract.md`).
 
 ## Known limitations
 
-- Embedding endpoint/format/dimension unconfirmed → `CirrascaleEmbeddingProvider`
-  raises until implemented; mock embeddings are deterministic but not semantic.
+- Embedding **retrieval quality** on `bge-base` is modest on short/sparse text
+  (it can rank a generic food blurb above a nightlife one). Expect it to improve
+  with real scraped descriptions and/or `bge-large`; worth an eval pass. The
+  converter itself is verified correct (batched == individual embeddings; dim
+  matches the store).
 - 8B output is modest; the backend grounds activities in retrieved places and
   flags unverified ones rather than trusting the model's claims.
 - Unit tests never call Cirrascale or Qdrant (mock/in-memory only).
