@@ -45,3 +45,6 @@ coverage/
 /.agents/
 /skills-lock.json
 /.claude/skills/openui/
+
+# Full-RAG demo artifacts (NDJSON captures, redacted)
+demo-output/
