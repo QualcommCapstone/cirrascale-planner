@@ -38,6 +38,7 @@ before porting anything here.
 9. `docs/local-development.md` — run web + api + Qdrant locally (mock mode by default).
 10. `docs/cirrascale-integration.md` — where Cirrascale is used and how to switch mock → real.
 11. `BACKEND-PROGRESS.md` — live checkpoint for the monorepo/backend work.
+12. `docs/data-layer.md` — the Python data & trust layer in `backend/` (scraping, sources, rules).
 
 ## The golden rules
 
@@ -75,4 +76,6 @@ src/components/trip/*       Composer, chips, overview, stop/activity cards
 src/components/landing/*    Landing hero + sample trips
 src/components/ui/*         Reused UI primitives (shadcn + magic-ui)
 docs/*                      Steering docs (read these)
+backend/                    Python data layer (scraping, cleaning, enrichment, JSONL export); see backend/README.md
+scraper/                    More sources: OSM, Wikidata coords, DuckDuckGo + Scrapy crawl; see scraper/README.md
 ```

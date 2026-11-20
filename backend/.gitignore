@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local secrets (commit only .env.example)
+.env
+
+# Scraper output (regenerate with `uv run python -m app.scraping <city>`)
+data/

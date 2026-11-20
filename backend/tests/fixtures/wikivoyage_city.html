@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!--
+  Hand-written test page that copies the markup of a real Wikivoyage article
+  (Parsoid HTML, Nov 2026). Place names and data are made up. It includes the
+  messy cases the parser must survive: missing fields, bad coordinates, a
+  nameless listing, a repeated heading id ("Budget_2"), and listings outside
+  the See/Do/Eat/... sections.
+-->
+<html>
+<head>
+  <title>Testville – Travel guide at Wikivoyage</title>
+  <link rel="canonical" href="https://en.wikivoyage.org/wiki/Testville"/>
+</head>
+<body>
+<div class="mw-parser-output">
+
+<section data-mw-section-id="1" aria-labelledby="Districts">
+  <div class="mw-heading mw-heading2"><h2 id="Districts">Districts</h2></div>
+  <table class="regionlistitem-table"><tr><td>
+    <a href="https://en.wikivoyage.org/wiki/Testville/Old_Town" title="Testville/Old Town">Old Town</a>
+    <a href="https://en.wikivoyage.org/wiki/Testville/Harbor" title="Testville/Harbor">Harbor</a>
+    <a href="https://en.wikivoyage.org/wiki/Testville/Harbor" title="Testville/Harbor">Harbor (again)</a>
+    <a href="https://en.wikivoyage.org/wiki/Otherplace" title="Otherplace">Not a district</a>
+  </td></tr></table>
+</section>
+
+<section data-mw-section-id="2" aria-labelledby="Get_in">
+  <div class="mw-heading mw-heading2"><h2 id="Get_in">Get in</h2></div>
+  <ul><li><bdi class="vcard"><span id="Testville_Airport" class="fn org listing-name">Testville Airport</span></bdi></li></ul>
+</section>
+
+<section data-mw-section-id="3" aria-labelledby="See">
+  <div class="mw-heading mw-heading2"><h2 id="See">See</h2></div>
+  <ul>
+    <li><bdi class="vcard" id="mwgA">
+      <span class="noprint listing-coordinates"><span class="geo"><abbr class="latitude">35.68836</abbr><abbr class="longitude">139.7202</abbr></span></span>
+      <span id="Fire_Museum" class="fn org listing-name"><a rel="mw:ExtLink nofollow" href="https://museum.example.org/" class="external text">Fire   Museum</a></span><span id="Q11559505" class="noprint"></span>
+      (<span class="nickname listing-alt "><span lang="ja">消防博物館</span></span>),
+      <span class="adr listing-address street-address">Yotsuya 4-10</span>
+      (<span class="adr listing-directions">just outside the station</span>),
+      <abbr title="phone" class="listing-phone-symbol">☏</abbr> <span class="tel listing-phone"><a href="tel:+813" class="external text">+81 3-3353-9119</a></span>,
+      <span class="note listing-hours">09:30-17:00, closed on Mondays</span>.
+      <bdi class="note listing-content">Three fire-fighting <b>helicopters</b>,
+         ten trucks.</bdi>
+      <span class="note listing-price">Free</span>.
+      <span class="listing-metadata"><span class="listing-metadata-items"><span class="listing-lastedit">updated Dec 2023</span></span></span>
+    </bdi></li>
+    <li><bdi class="vcard">
+      <span class="noprint listing-coordinates"><span class="geo"><abbr class="latitude">999</abbr><abbr class="longitude">not-a-number</abbr></span></span>
+      <span id="Bad_Coords_Park" class="fn org listing-name">Bad Coords Park</span>
+      <span class="noprint listing-sister-icons"><span class="listing-sister-wikidata"><a href="https://en.wikivoyage.org/wiki/d:Q42">wd</a></span></span>
+    </bdi></li>
+  </ul>
+</section>
+
+<section data-mw-section-id="4" aria-labelledby="Eat">
+  <div class="mw-heading mw-heading2"><h2 id="Eat">Eat</h2></div>
+  <section data-mw-section-id="5" aria-labelledby="Budget">
+    <div class="mw-heading mw-heading3"><h3 id="Budget">Budget</h3></div>
+    <ul>
+      <li><bdi class="vcard">
+        <span id="Pasutakan" class="fn org listing-name">Pasutakan</span>
+        <span class="note listing-price">¥1200</span>
+      </bdi></li>
+      <li><bdi class="vcard">
+        <span class="adr listing-address street-address">Dianne Bldg 3-36-6</span>
+        <bdi class="note listing-content"></bdi>
+      </bdi></li>
+    </ul>
+  </section>
+</section>
+
+<section data-mw-section-id="6" aria-labelledby="Sleep">
+  <div class="mw-heading mw-heading2"><h2 id="Sleep">Sleep</h2></div>
+  <section data-mw-section-id="7" aria-labelledby="Budget_2">
+    <div class="mw-heading mw-heading3"><h3 id="Budget_2">Budget</h3></div>
+    <ul>
+      <li><bdi class="vcard">
+        <span id="Sakura_Hotel" class="fn org listing-name">Sakura Hotel</span>
+        <span class="note listing-price">Single rooms ¥6930</span>
+        <bdi class="note listing-content">  </bdi>
+      </bdi></li>
+    </ul>
+  </section>
+</section>
+
+<section data-mw-section-id="8" aria-labelledby="Connect">
+  <div class="mw-heading mw-heading2"><h2 id="Connect">Connect</h2></div>
+  <ul><li><bdi class="vcard"><span id="Tourist_Info" class="fn org listing-name">Tourist Info</span></bdi></li></ul>
+</section>
+
+</div>
+</body>
+</html>
