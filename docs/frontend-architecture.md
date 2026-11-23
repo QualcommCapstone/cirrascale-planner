@@ -44,7 +44,7 @@ the item, any focus makes the globe fly; `focusTick` lets a re-click re-trigger.
 | `src/components/layout/Header.tsx` | Brand, trip title, New trip / Share / Save PDF. |
 | `src/components/trip/TripStory.tsx` | Welcome → progress → trip story. |
 | `src/components/trip/TripOverview.tsx` | Headline + muted "— where", summary, vibe tags, Where/When/Days/Route, stop photo strip, "Planned for" chips, real generation time. |
-| `src/components/trip/StopSection.tsx` | Stop hero photo card, Stay/Eat tiles, one block per day. |
+| `src/components/trip/StopSection.tsx` | Stop hero photo card, Stay/Eat tiles, one block per day (with a weather badge when a forecast is available). |
 | `src/components/trip/ActivityCard.tsx` | Photo card: slot tag, location tag, title, one-line reason, duration/cost/category, Wikipedia link, "Not verified" badge. |
 | `src/components/trip/TransitConnector.tsx` | "Tokyo → Kyoto · 2h 15m train" between stops. |
 | `src/components/trip/PreferenceChips.tsx` | Interests (multi), budget, pace. |
@@ -53,6 +53,7 @@ the item, any focus makes the globe fly; `focusTick` lets a re-click re-trigger.
 | `src/lib/trip/normalize.ts` | Lenient zod parsing of model JSON, day numbering, leg plausibility, finalize (drop/blank what's still bad). |
 | `src/lib/trip/quality.ts` | Filler / generic-name / duplicate checks; issues are fed back on retry. |
 | `src/lib/trip/places.ts` | Wikipedia verification + photos (no key). |
+| `src/lib/trip/weather.ts` | Per-day forecast from Open-Meteo (no key). Sem 1 scope only: shown, not fed back into the prompt. |
 | `src/lib/trip/share.ts`, `format.ts` | Share-link encode/decode (validated), display helpers, `safeUrl`. |
 | `src/lib/planner.ts` | All prompts (outline + per-stop days). |
 
@@ -119,6 +120,9 @@ back off on 429 using `Retry-After`, cache successful lookups in memory.
 - The 110m country outlines look coarse when zoomed into a city; a tile map for the
   city view would be the next step.
 - Personalization is per-request chips; saved preferences + retrieval is SCRUM-6.
+- Weather assumes the trip starts today (no real trip dates are collected yet), and only
+  flags "indoor day" in the UI — it doesn't change which activities the model picks. A real
+  date field and feeding the forecast back into generation would be the next step.
 
 ## Legacy
 

@@ -15,6 +15,7 @@ import { extractArrayItems, extractJson } from "../json";
 import type { CompletionOptions } from "../cirrascale";
 import type { PlacesApi } from "./places";
 import { sameText } from "./quality";
+import { noopWeatherApi, type DayWeather, type WeatherApi } from "./weather";
 import {
   buildTrip,
   finalizeDays,
@@ -30,6 +31,8 @@ import type { Day, Preferences, Stop, TripEvent, TripRequest } from "./types";
 export interface GenerateDeps {
   complete: (prompt: string, options?: CompletionOptions) => Promise<string>;
   places: PlacesApi;
+  /** Defaults to a no-op (no weather shown) when omitted, e.g. in tests. */
+  weather?: WeatherApi;
   now?: () => number;
 }
 
@@ -152,6 +155,22 @@ async function verifyDays(
 }
 
 /**
+ * Attach a forecast to each day, assuming the trip starts today (day 1).
+ * Days outside the 16-day forecast window are left without weather.
+ */
+async function attachWeather(days: Day[], stop: Stop, weather: WeatherApi): Promise<Day[]> {
+  const forecast = await weather
+    .forecast({ lat: stop.lat, lng: stop.lng })
+    .catch(() => new Map<string, DayWeather>());
+  const today = new Date();
+  return days.map((d) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + (d.day - 1));
+    return { ...d, weather: forecast.get(date.toISOString().slice(0, 10)) ?? null };
+  });
+}
+
+/**
  * Generate a trip, reporting progress through `emit`. Throws only if no usable
  * outline comes back; a stop whose days fail is reported as "stopError".
  */
@@ -191,10 +210,11 @@ export async function generateTrip(
         const names = days.flatMap((d) => d.activities.map((a) => a.name));
         emitted.push(...names);
         const food = stop.food.filter((f) => !names.some((n) => sameText(n, f.name)));
+        const withWeather = await attachWeather(days, stop, deps.weather ?? noopWeatherApi);
         emit({
           type: "stop",
           stopId: stop.id,
-          days: await verifyDays(days, stop, deps.places, seenArticles),
+          days: await verifyDays(withWeather, stop, deps.places, seenArticles),
           food,
         });
       } catch (err) {

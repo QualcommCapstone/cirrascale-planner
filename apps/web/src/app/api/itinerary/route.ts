@@ -3,6 +3,7 @@ import { complete } from "@/lib/cirrascale";
 import { getBackendUrl } from "@/lib/backend";
 import { generateTrip } from "@/lib/trip/generate";
 import { wikipediaPlaces } from "@/lib/trip/places";
+import { openMeteoWeather } from "@/lib/trip/weather";
 import { TripRequestSchema, type TripEvent } from "@/lib/trip/types";
 
 export const runtime = "nodejs";
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
         }
       };
       try {
-        await generateTrip(parsed.data, emit, { complete, places: wikipediaPlaces });
+        await generateTrip(parsed.data, emit, { complete, places: wikipediaPlaces, weather: openMeteoWeather });
       } catch (err) {
         // Log the real error; upstream details stay off the client.
         console.error("[api/itinerary]", err);

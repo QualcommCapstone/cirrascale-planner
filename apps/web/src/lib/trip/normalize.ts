@@ -329,7 +329,7 @@ export function parseDays(
     const src = rawDays.find((x) => x.day === d) ?? rawDays[d - stop.dayStart];
     if (!src) {
       issues.push(`day ${d} is missing`);
-      days.push({ day: d, activities: [] });
+      days.push({ day: d, activities: [], weather: null });
       continue;
     }
 
@@ -364,7 +364,7 @@ export function parseDays(
         sourceUrl: null,
       });
     }
-    days.push({ day: d, activities });
+    days.push({ day: d, activities, weather: null });
   }
 
   return { days, issues, bad };

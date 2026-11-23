@@ -1,14 +1,42 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { AlertCircle, ArrowUpRight, BedDouble, MapPin, Utensils } from "lucide-react";
+import { AlertCircle, ArrowUpRight, BedDouble, Cloud, CloudLightning, CloudRain, MapPin, Snowflake, Sun, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrip } from "@/lib/store/trip";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 import { formatDays } from "@/lib/trip/format";
 import type { Stop } from "@/lib/trip/types";
+import type { DayWeather } from "@/lib/trip/weather";
 import { ActivityCard } from "./ActivityCard";
 import { Photo } from "./Photo";
+
+const WEATHER_ICON: Record<DayWeather["condition"], typeof Sun> = {
+  clear: Sun,
+  hot: Sun,
+  cloudy: Cloud,
+  rain: CloudRain,
+  snow: Snowflake,
+  stormy: CloudLightning,
+};
+
+function DayWeatherBadge({ weather }: { weather: DayWeather }) {
+  const Icon = WEATHER_ICON[weather.condition];
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+        weather.indoorAdvised
+          ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+          : "border-border bg-card text-muted-foreground"
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {Math.round(weather.highC)}°C
+      {weather.indoorAdvised ? " · indoor day" : null}
+    </span>
+  );
+}
 
 interface Props {
   stop: Stop;
@@ -114,6 +142,7 @@ export function StopSection({ stop, number, pending, failed }: Props) {
             <div key={d.day}>
               <div className="mb-3 flex items-baseline gap-3">
                 <h4 className="text-lg font-bold tracking-display">Day {d.day}</h4>
+                {d.weather ? <DayWeatherBadge weather={d.weather} /> : null}
                 <span className="h-px flex-1 bg-border" />
               </div>
               {d.activities.length > 0 ? (
